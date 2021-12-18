@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1637908688" />
+    <testcase name="ModAdderTester" classname="ModAdderTester" file="/spinalworkspace/poseidon-spinalhdl/src/tests/ModAdderTest/ModAdderTester.py" lineno="7" time="0.11706805229187012" sim_time_ns="1500.001" ratio_time="12813.068729120461" />
+  </testsuite>
+</testsuites>

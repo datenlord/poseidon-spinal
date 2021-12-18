@@ -1,0 +1,56 @@
+#! /usr/bin/vvp
+:ivl_version "10.3 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision - 12;
+:vpi_module "system";
+:vpi_module "vhdl_sys";
+:vpi_module "v2005_math";
+:vpi_module "va_math";
+:vpi_module "v2009";
+S_0x55e9269f8350 .scope module, "ModAdder" "ModAdder" 2 2;
+ .timescale -9 -12;
+    .port_info 0 /INPUT 255 "op1_i"
+    .port_info 1 /INPUT 255 "op2_i"
+    .port_info 2 /OUTPUT 255 "res_o"
+P_0x55e9269f84d0 .param/l "DATA_WIDTH" 0 2 4, +C4<00000000000000000000000011111111>;
+P_0x55e9269f8510 .param/l "MODULUS" 0 2 6, C4<111001111101101101001110101001100101001100111010111110101001000001100110011100111011000000010000000100110100001110110000000010101010011101111011010010000000010111111111111111001011011111111101111111111111111111111111111111100000000000000000000000000000001>;
+P_0x55e9269f8550 .param/l "MOD_COMPENSATION" 0 2 8, C4<000110000010010010110001010110011010110011000101000001010110111110011001100011000100111111101111111011001011110001001111111101010101100010000100101101111111101000000000000000110100100000000010000000000000000000000000000000011111111111111111111111111111111>;
+L_0x55e9269f8740 .functor OR 1, L_0x55e926a32ae0, L_0x55e926a33090, C4<0>, C4<0>;
+L_0x7ff8a57f2060 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0x55e926a0e8b0_0 .net *"_s10", 0 0, L_0x7ff8a57f2060;  1 drivers
+v0x55e926a31b30_0 .net *"_s11", 255 0, L_0x55e926a32f50;  1 drivers
+v0x55e926a31c10_0 .net *"_s16", 255 0, L_0x55e926a33260;  1 drivers
+L_0x7ff8a57f20a8 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0x55e926a31d00_0 .net *"_s19", 0 0, L_0x7ff8a57f20a8;  1 drivers
+L_0x7ff8a57f20f0 .functor BUFT 1, C4<0000110000010010010110001010110011010110011000101000001010110111110011001100011000100111111101111111011001011110001001111111101010101100010000100101101111111101000000000000000110100100000000010000000000000000000000000000000011111111111111111111111111111111>, C4<0>, C4<0>, C4<0>;
+v0x55e926a31de0_0 .net/2u *"_s20", 255 0, L_0x7ff8a57f20f0;  1 drivers
+v0x55e926a31f10_0 .net *"_s22", 255 0, L_0x55e926a43510;  1 drivers
+v0x55e926a31ff0_0 .net *"_s24", 0 0, L_0x55e9269f8740;  1 drivers
+v0x55e926a320d0_0 .net *"_s3", 255 0, L_0x55e926a32c80;  1 drivers
+L_0x7ff8a57f2018 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0x55e926a321b0_0 .net *"_s6", 0 0, L_0x7ff8a57f2018;  1 drivers
+v0x55e926a32290_0 .net *"_s7", 255 0, L_0x55e926a32dd0;  1 drivers
+v0x55e926a32370_0 .net "carry1", 0 0, L_0x55e926a32ae0;  1 drivers
+v0x55e926a32430_0 .net "carry2", 0 0, L_0x55e926a33090;  1 drivers
+o0x7ff8a583b258 .functor BUFZ 255, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x55e926a324f0_0 .net "op1_i", 254 0, o0x7ff8a583b258;  0 drivers
+o0x7ff8a583b288 .functor BUFZ 255, C4<zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz>; HiZ drive
+v0x55e926a325d0_0 .net "op2_i", 254 0, o0x7ff8a583b288;  0 drivers
+v0x55e926a326b0_0 .net "res1", 254 0, L_0x55e926a32bb0;  1 drivers
+v0x55e926a32790_0 .net "res2", 254 0, L_0x55e926a33170;  1 drivers
+v0x55e926a32870_0 .net "res_o", 254 0, L_0x55e926a436f0;  1 drivers
+L_0x55e926a32ae0 .part L_0x55e926a32f50, 255, 1;
+L_0x55e926a32bb0 .part L_0x55e926a32f50, 0, 255;
+L_0x55e926a32c80 .concat [ 255 1 0 0], o0x7ff8a583b258, L_0x7ff8a57f2018;
+L_0x55e926a32dd0 .concat [ 255 1 0 0], o0x7ff8a583b288, L_0x7ff8a57f2060;
+L_0x55e926a32f50 .arith/sum 256, L_0x55e926a32c80, L_0x55e926a32dd0;
+L_0x55e926a33090 .part L_0x55e926a43510, 255, 1;
+L_0x55e926a33170 .part L_0x55e926a43510, 0, 255;
+L_0x55e926a33260 .concat [ 255 1 0 0], L_0x55e926a32bb0, L_0x7ff8a57f20a8;
+L_0x55e926a43510 .arith/sum 256, L_0x55e926a33260, L_0x7ff8a57f20f0;
+L_0x55e926a436f0 .functor MUXZ 255, L_0x55e926a32bb0, L_0x55e926a33170, L_0x55e9269f8740, C4<>;
+# The file index is used to find the file name in the following table.
+:file_names 3;
+    "N/A";
+    "<interactive>";
+    "../../main/verilog/ModAdder.v";

@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1639816229" />
+    <testcase name="MDSMatrixAddersTest" classname="MDSMatrixAddersTester" file="/usr/local/lib/python3.8/dist-packages/cocotb/decorators.py" lineno="162" time="10.660712957382202" sim_time_ns="69000.001" ratio_time="6472.362709308266" />
+  </testsuite>
+</testsuites>

@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1639814976" />
+    <testcase name="ModMultiplierTest" classname="SBox5Tester" file="/usr/local/lib/python3.8/dist-packages/cocotb/decorators.py" lineno="66" time="10.254321098327637" sim_time_ns="137360.001" ratio_time="13395.328631010185" />
+  </testsuite>
+</testsuites>
