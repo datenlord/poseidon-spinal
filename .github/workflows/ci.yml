@@ -20,7 +20,7 @@ jobs:
       - name: build and simulate
         run : |
           docker pull datenlord/spinal-cocotb:1.6.1
-          ./run.sh 
+          ./run.sh -e PoseidonTopLevel
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
