@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1639377196" />
-    <testcase name="DataLoopbackBufferTest" classname="DataLoopbackBufferTester" file="/usr/local/lib/python3.8/dist-packages/cocotb/decorators.py" lineno="142" time="3.0111465454101562" sim_time_ns="27420.001" ratio_time="9106.16623485027" />
-  </testsuite>
-</testsuites>

@@ -7,9 +7,9 @@ val spinalCore = "com.github.spinalhdl" %% "spinalhdl-core" % spinalVersion
 val spinalLib = "com.github.spinalhdl" %% "spinalhdl-lib" % spinalVersion
 val spinalIdslPlugin = compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-plugin" % spinalVersion)
 
-lazy val mylib = (project in file("."))
+lazy val poseidon = (project in file("."))
   .settings(
-    name := "SpinalTemplateSbt",
+    name := "poseidon-spinalhdl",
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin)
   )
 

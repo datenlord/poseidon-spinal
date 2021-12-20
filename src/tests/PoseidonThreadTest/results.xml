@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1639739396" />
-    <testcase name="PoseidonThreadTest" classname="PoseidonThreadTester" file="/usr/local/lib/python3.8/dist-packages/cocotb/decorators.py" lineno="110" time="76.58214330673218" sim_time_ns="1780.001" ratio_time="23.243029290400177" />
-  </testsuite>
-</testsuites>

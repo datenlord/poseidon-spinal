@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1639309603" />
-    <testcase name="AXI4StreamTransmitterTest" classname="AXI4StreamTransmitterTester" file="/usr/local/lib/python3.8/dist-packages/cocotb/decorators.py" lineno="75" time="3.5709617137908936" sim_time_ns="75810.001" ratio_time="21229.575413039347" />
-  </testsuite>
-</testsuites>

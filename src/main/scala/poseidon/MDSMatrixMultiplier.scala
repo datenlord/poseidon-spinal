@@ -141,7 +141,7 @@ object MDSMatrixMultiplierVerilog{
     val config = PoseidonGenerics(t_max = 12,round_max = 65,thread_num = 5,data_width = 255,id_width=4)
     SpinalConfig(
       mode=Verilog,
-      targetDirectory="./src/main/verilog/mdsMatrixMultiplier"
+      targetDirectory="./src/main/verilog/MDSMatrixMultiplier"
       ).generate(new MDSMatrixMultiplier(config)).printPruned()
   }
 }

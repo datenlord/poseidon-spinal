@@ -31,10 +31,6 @@ module PoseidonThread (
   input               reset,
   input               clk
 );
-    initial begin
-        $dumpfile("dump.vcd");
-        $dumpvars(1, PoseidonThread);
-    end
   wire       [1:0]    AddRoundConstantStage_roundConstants_t3_io_read_ports_0_t_index;
   wire       [5:0]    AddRoundConstantStage_roundConstants_t3_io_read_ports_0_round_index;
   wire       [2:0]    AddRoundConstantStage_roundConstants_t5_io_read_ports_0_t_index;
