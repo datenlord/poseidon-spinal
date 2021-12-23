@@ -3,29 +3,29 @@ package poseidon
 import spinal.core._
 import spinal.lib._
 
-case class ModAdder() extends BlackBox{
+case class ModAdder() extends BlackBox {
   val io = new Bundle {
-    val op1_i = in  UInt (255 bits)
-    val op2_i = in  UInt (255 bits)
+    val op1_i = in UInt (255 bits)
+    val op2_i = in UInt (255 bits)
     val res_o = out UInt (255 bits)
   }
   noIoPrefix()
 }
 
-case class operands(data_width:Int) extends Bundle{
+case class operands(data_width: Int) extends Bundle {
   val op1 = UInt(data_width bits)
   val op2 = UInt(data_width bits)
 }
-case class results(data_width:Int) extends Bundle{
+case class results(data_width: Int) extends Bundle {
   val res = UInt(data_width bits)
 }
 
-case class ModMultiplier() extends BlackBox{
-  val io = new Bundle{
-    val clk = in Bool()
-    val rst = in Bool()
-    val cmd = slave Stream(operands(255))
-    val rsp = master Stream(results(255))
+case class ModMultiplier() extends BlackBox {
+  val io = new Bundle {
+    val clk = in Bool ()
+    val rst = in Bool ()
+    val cmd = slave Stream (operands(255))
+    val rsp = master Stream (results(255))
   }
   noIoPrefix()
   // Function used to rename all signals of the blackbox

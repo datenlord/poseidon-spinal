@@ -1065,7 +1065,7 @@ module AXI4StreamTransmitter (
   wire       [254:0]  streamMux_7_io_output_payload_state_element;
   wire       [5:0]    _zz__zz_demux_select_1;
   reg        [6:0]    idCounter;
-  wire                when_AXI4StreamInterface_l211;
+  wire                when_AXI4StreamInterface_l221;
   wire                input_demux_0_valid;
   reg                 input_demux_0_ready;
   wire       [6:0]    input_demux_0_payload_state_id;
@@ -1216,7 +1216,7 @@ module AXI4StreamTransmitter (
     .io_output_payload_state_id           (streamMux_7_io_output_payload_state_id       ), //o
     .io_output_payload_state_element      (streamMux_7_io_output_payload_state_element  )  //o
   );
-  assign when_AXI4StreamInterface_l211 = (io_output_valid && io_output_ready);
+  assign when_AXI4StreamInterface_l221 = (io_output_valid && io_output_ready);
   assign _zz_demux_select = {input_demux_5_ready,{input_demux_4_ready,{input_demux_3_ready,{input_demux_2_ready,{input_demux_1_ready,input_demux_0_ready}}}}};
   assign _zz_demux_select_1 = (_zz_demux_select & (~ _zz__zz_demux_select_1));
   assign _zz_demux_select_2 = _zz_demux_select_1[3];
@@ -1336,7 +1336,7 @@ module AXI4StreamTransmitter (
       input_demux_4_rValid <= 1'b0;
       input_demux_5_rValid <= 1'b0;
     end else begin
-      if(when_AXI4StreamInterface_l211) begin
+      if(when_AXI4StreamInterface_l221) begin
         idCounter <= (idCounter + 7'h01);
       end
       if(input_demux_0_ready) begin
@@ -2194,10 +2194,10 @@ module DataLoopbackBuffer (
   reg        [6:0]    buffers_2_2_rData_state_id;
   reg        [254:0]  buffers_2_2_rData_state_element;
   wire                when_Stream_l342_23;
-  wire                when_PoseidonTopLevel_l90;
-  wire                when_PoseidonTopLevel_l93;
-  wire                when_PoseidonTopLevel_l96;
   wire                when_PoseidonTopLevel_l99;
+  wire                when_PoseidonTopLevel_l102;
+  wire                when_PoseidonTopLevel_l105;
+  wire                when_PoseidonTopLevel_l108;
 
   assign _zz_io_input_ready = inputs_2_ready;
   assign _zz_io_input_ready_1 = {inputs_1_ready,inputs_0_ready};
@@ -3221,24 +3221,24 @@ module DataLoopbackBuffer (
   assign buffers_3_2_payload_state_element = buffers_2_2_m2sPipe_payload_state_element;
   always @(*) begin
     io_residue = 4'b1100;
-    if(when_PoseidonTopLevel_l90) begin
+    if(when_PoseidonTopLevel_l99) begin
       io_residue = 4'b1001;
     end
-    if(when_PoseidonTopLevel_l93) begin
+    if(when_PoseidonTopLevel_l102) begin
       io_residue = 4'b0110;
     end
-    if(when_PoseidonTopLevel_l96) begin
+    if(when_PoseidonTopLevel_l105) begin
       io_residue = 4'b0011;
     end
-    if(when_PoseidonTopLevel_l99) begin
+    if(when_PoseidonTopLevel_l108) begin
       io_residue = 4'b0000;
     end
   end
 
-  assign when_PoseidonTopLevel_l90 = ((buffers_0_0_valid && buffers_0_1_valid) && buffers_0_2_valid);
-  assign when_PoseidonTopLevel_l93 = ((buffers_1_0_valid && buffers_1_1_valid) && buffers_1_2_valid);
-  assign when_PoseidonTopLevel_l96 = ((buffers_2_0_valid && buffers_2_1_valid) && buffers_2_2_valid);
-  assign when_PoseidonTopLevel_l99 = ((buffers_3_0_valid && buffers_3_1_valid) && buffers_3_2_valid);
+  assign when_PoseidonTopLevel_l99 = ((buffers_0_0_valid && buffers_0_1_valid) && buffers_0_2_valid);
+  assign when_PoseidonTopLevel_l102 = ((buffers_1_0_valid && buffers_1_1_valid) && buffers_1_2_valid);
+  assign when_PoseidonTopLevel_l105 = ((buffers_2_0_valid && buffers_2_1_valid) && buffers_2_2_valid);
+  assign when_PoseidonTopLevel_l108 = ((buffers_3_0_valid && buffers_3_1_valid) && buffers_3_2_valid);
   assign io_outputs_0_valid = buffers_3_0_valid;
   assign buffers_3_0_ready = io_outputs_0_ready;
   assign io_outputs_0_payload_round_index = buffers_3_0_payload_round_index;
@@ -3755,7 +3755,7 @@ module PoseidonThread_2 (
   wire       [3:0]    AddRoundConstantStage_output_payload_state_size;
   wire       [6:0]    AddRoundConstantStage_output_payload_state_id;
   reg        [254:0]  AddRoundConstantStage_output_payload_state_element;
-  wire                when_PoseidonThread_l46;
+  wire                when_PoseidonThread_l65;
   wire                AddRoundConstantStage_output_m2sPipe_valid;
   wire                AddRoundConstantStage_output_m2sPipe_ready;
   wire       [6:0]    AddRoundConstantStage_output_m2sPipe_payload_round_index;
@@ -4264,7 +4264,7 @@ module PoseidonThread_2 (
         AddRoundConstantStage_modAdder_op2_i = AddRoundConstantStage_roundConstants_t3_io_read_ports_0_data;
       end
       4'b0101 : begin
-        if(when_PoseidonThread_l46) begin
+        if(when_PoseidonThread_l65) begin
           AddRoundConstantStage_modAdder_op2_i = 255'h0;
         end else begin
           AddRoundConstantStage_modAdder_op2_i = AddRoundConstantStage_roundConstants_t5_io_read_ports_0_data;
@@ -4282,7 +4282,7 @@ module PoseidonThread_2 (
     endcase
   end
 
-  assign when_PoseidonThread_l46 = (io_input_payload_state_index == 4'b0101);
+  assign when_PoseidonThread_l65 = (io_input_payload_state_index == 4'b0101);
   assign AddRoundConstantStage_output_valid = io_input_valid;
   assign io_input_ready = AddRoundConstantStage_output_ready;
   assign AddRoundConstantStage_output_payload_round_index = io_input_payload_round_index;
@@ -4678,7 +4678,7 @@ module PoseidonThread_1 (
   wire       [3:0]    AddRoundConstantStage_output_payload_state_size;
   wire       [6:0]    AddRoundConstantStage_output_payload_state_id;
   reg        [254:0]  AddRoundConstantStage_output_payload_state_element;
-  wire                when_PoseidonThread_l46;
+  wire                when_PoseidonThread_l65;
   wire                AddRoundConstantStage_output_m2sPipe_valid;
   wire                AddRoundConstantStage_output_m2sPipe_ready;
   wire       [6:0]    AddRoundConstantStage_output_m2sPipe_payload_round_index;
@@ -5187,7 +5187,7 @@ module PoseidonThread_1 (
         AddRoundConstantStage_modAdder_op2_i = AddRoundConstantStage_roundConstants_t3_io_read_ports_0_data;
       end
       4'b0101 : begin
-        if(when_PoseidonThread_l46) begin
+        if(when_PoseidonThread_l65) begin
           AddRoundConstantStage_modAdder_op2_i = 255'h0;
         end else begin
           AddRoundConstantStage_modAdder_op2_i = AddRoundConstantStage_roundConstants_t5_io_read_ports_0_data;
@@ -5205,7 +5205,7 @@ module PoseidonThread_1 (
     endcase
   end
 
-  assign when_PoseidonThread_l46 = (io_input_payload_state_index == 4'b0101);
+  assign when_PoseidonThread_l65 = (io_input_payload_state_index == 4'b0101);
   assign AddRoundConstantStage_output_valid = io_input_valid;
   assign io_input_ready = AddRoundConstantStage_output_ready;
   assign AddRoundConstantStage_output_payload_round_index = io_input_payload_round_index;
@@ -5601,7 +5601,7 @@ module PoseidonThread (
   wire       [3:0]    AddRoundConstantStage_output_payload_state_size;
   wire       [6:0]    AddRoundConstantStage_output_payload_state_id;
   reg        [254:0]  AddRoundConstantStage_output_payload_state_element;
-  wire                when_PoseidonThread_l46;
+  wire                when_PoseidonThread_l65;
   wire                AddRoundConstantStage_output_m2sPipe_valid;
   wire                AddRoundConstantStage_output_m2sPipe_ready;
   wire       [6:0]    AddRoundConstantStage_output_m2sPipe_payload_round_index;
@@ -6110,7 +6110,7 @@ module PoseidonThread (
         AddRoundConstantStage_modAdder_op2_i = AddRoundConstantStage_roundConstants_t3_io_read_ports_0_data;
       end
       4'b0101 : begin
-        if(when_PoseidonThread_l46) begin
+        if(when_PoseidonThread_l65) begin
           AddRoundConstantStage_modAdder_op2_i = 255'h0;
         end else begin
           AddRoundConstantStage_modAdder_op2_i = AddRoundConstantStage_roundConstants_t5_io_read_ports_0_data;
@@ -6128,7 +6128,7 @@ module PoseidonThread (
     endcase
   end
 
-  assign when_PoseidonThread_l46 = (io_input_payload_state_index == 4'b0101);
+  assign when_PoseidonThread_l65 = (io_input_payload_state_index == 4'b0101);
   assign AddRoundConstantStage_output_valid = io_input_valid;
   assign io_input_ready = AddRoundConstantStage_output_ready;
   assign AddRoundConstantStage_output_payload_round_index = io_input_payload_round_index;
@@ -6413,7 +6413,7 @@ module MDSMatrixAdders (
   wire       [254:0]  modAdder_34_res_o;
   wire       [254:0]  modAdder_35_res_o;
   wire       [254:0]  modAdder_36_res_o;
-  wire       [3:0]    _zz_when_MDSMatrixAdders_l94;
+  wire       [3:0]    _zz_when_MDSMatrixAdders_l99;
   wire                threadAdders_tempRes_valid;
   reg                 threadAdders_tempRes_ready;
   wire       [6:0]    threadAdders_tempRes_payload_round_index;
@@ -6582,12 +6582,12 @@ module MDSMatrixAdders (
   reg        `threadAccumulator_fsm_enumDefinition_binary_sequential_type threadAccumulator_fsm_stateReg;
   reg        `threadAccumulator_fsm_enumDefinition_binary_sequential_type threadAccumulator_fsm_stateNext;
   wire                threadAdders_output_input_fire;
-  wire                when_MDSMatrixAdders_l79;
+  wire                when_MDSMatrixAdders_l84;
   wire                threadAdders_output_input_fire_1;
-  wire                when_MDSMatrixAdders_l94;
+  wire                when_MDSMatrixAdders_l99;
   wire                threadAccumulator_output_fire;
   wire                threadAdders_output_input_fire_2;
-  wire                when_MDSMatrixAdders_l111;
+  wire                when_MDSMatrixAdders_l116;
   wire                when_StateMachine_l214;
   `ifndef SYNTHESIS
   reg [223:0] threadAccumulator_fsm_stateReg_string;
@@ -6595,7 +6595,7 @@ module MDSMatrixAdders (
   `endif
 
 
-  assign _zz_when_MDSMatrixAdders_l94 = (threadAccumulator_fsm_counter + 4'b0011);
+  assign _zz_when_MDSMatrixAdders_l99 = (threadAccumulator_fsm_counter + 4'b0011);
   ModAdder modAdder_1 (
     .op1_i    (io_inputs_0_payload_state_elements_0  ), //i
     .op2_i    (io_inputs_1_payload_state_elements_0  ), //i
@@ -7080,7 +7080,7 @@ module MDSMatrixAdders (
     case(threadAccumulator_fsm_stateReg)
       `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_IDLE : begin
         if(threadAdders_output_input_fire) begin
-          if(when_MDSMatrixAdders_l79) begin
+          if(when_MDSMatrixAdders_l84) begin
             threadAccumulator_fsm_stateNext = `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_DONE;
           end else begin
             threadAccumulator_fsm_stateNext = `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_ADDING;
@@ -7089,7 +7089,7 @@ module MDSMatrixAdders (
       end
       `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_ADDING : begin
         if(threadAdders_output_input_fire_1) begin
-          if(when_MDSMatrixAdders_l94) begin
+          if(when_MDSMatrixAdders_l99) begin
             threadAccumulator_fsm_stateNext = `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_DONE;
           end
         end
@@ -7097,7 +7097,7 @@ module MDSMatrixAdders (
       `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_DONE : begin
         if(threadAccumulator_output_fire) begin
           if(threadAdders_output_input_fire_2) begin
-            if(when_MDSMatrixAdders_l111) begin
+            if(when_MDSMatrixAdders_l116) begin
               threadAccumulator_fsm_stateNext = `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_ADDING;
             end
           end else begin
@@ -7117,12 +7117,12 @@ module MDSMatrixAdders (
   end
 
   assign threadAdders_output_input_fire = (threadAdders_output_input_valid && threadAdders_output_input_ready);
-  assign when_MDSMatrixAdders_l79 = (threadAdders_output_input_payload_state_size == 4'b0011);
+  assign when_MDSMatrixAdders_l84 = (threadAdders_output_input_payload_state_size == 4'b0011);
   assign threadAdders_output_input_fire_1 = (threadAdders_output_input_valid && threadAdders_output_input_ready);
-  assign when_MDSMatrixAdders_l94 = (threadAccumulator_tempRes_state_size <= _zz_when_MDSMatrixAdders_l94);
+  assign when_MDSMatrixAdders_l99 = (threadAccumulator_tempRes_state_size <= _zz_when_MDSMatrixAdders_l99);
   assign threadAccumulator_output_fire = (threadAccumulator_output_valid && threadAccumulator_output_ready);
   assign threadAdders_output_input_fire_2 = (threadAdders_output_input_valid && threadAdders_output_input_ready);
-  assign when_MDSMatrixAdders_l111 = (4'b0011 < threadAdders_output_input_payload_state_size);
+  assign when_MDSMatrixAdders_l116 = (4'b0011 < threadAdders_output_input_payload_state_size);
   assign when_StateMachine_l214 = ((threadAccumulator_fsm_stateReg == `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_ADDING) && (! (threadAccumulator_fsm_stateNext == `threadAccumulator_fsm_enumDefinition_binary_sequential_threadAccumulator_fsm_ADDING)));
   always @(posedge clk or posedge reset) begin
     if(reset) begin
@@ -7197,7 +7197,7 @@ module MDSMatrixAdders (
             threadAccumulator_tempRes_state_elements_9 <= threadAdders_output_input_payload_state_elements_9;
             threadAccumulator_tempRes_state_elements_10 <= threadAdders_output_input_payload_state_elements_10;
             threadAccumulator_tempRes_state_elements_11 <= threadAdders_output_input_payload_state_elements_11;
-            if(!when_MDSMatrixAdders_l79) begin
+            if(!when_MDSMatrixAdders_l84) begin
               threadAccumulator_fsm_counter <= (threadAccumulator_fsm_counter + 4'b0011);
             end
           end
@@ -7216,7 +7216,7 @@ module MDSMatrixAdders (
             threadAccumulator_tempRes_state_elements_9 <= threadAccumulator_modAdderRes_9;
             threadAccumulator_tempRes_state_elements_10 <= threadAccumulator_modAdderRes_10;
             threadAccumulator_tempRes_state_elements_11 <= threadAccumulator_modAdderRes_11;
-            if(!when_MDSMatrixAdders_l94) begin
+            if(!when_MDSMatrixAdders_l99) begin
               threadAccumulator_fsm_counter <= (threadAccumulator_fsm_counter + 4'b0011);
             end
           end
@@ -7239,7 +7239,7 @@ module MDSMatrixAdders (
               threadAccumulator_tempRes_state_elements_9 <= threadAdders_output_input_payload_state_elements_9;
               threadAccumulator_tempRes_state_elements_10 <= threadAdders_output_input_payload_state_elements_10;
               threadAccumulator_tempRes_state_elements_11 <= threadAdders_output_input_payload_state_elements_11;
-              if(when_MDSMatrixAdders_l111) begin
+              if(when_MDSMatrixAdders_l116) begin
                 threadAccumulator_fsm_counter <= (threadAccumulator_fsm_counter + 4'b0011);
               end
             end
@@ -7380,14 +7380,14 @@ module AXI4StreamReceiver (
   wire       [254:0]  DataController_output_payload_state_elements_1;
   wire       [254:0]  DataController_output_payload_state_elements_2;
   reg        `ReceiverState_binary_sequential_type DataController_receiverState;
-  wire                when_AXI4StreamInterface_l52;
-  wire                when_AXI4StreamInterface_l63;
-  wire                when_AXI4StreamInterface_l79;
+  wire                when_AXI4StreamInterface_l50;
+  wire                when_AXI4StreamInterface_l61;
+  wire                when_AXI4StreamInterface_l77;
   wire                DataController_output_fire;
-  wire                when_AXI4StreamInterface_l99;
-  wire                when_AXI4StreamInterface_l114;
+  wire                when_AXI4StreamInterface_l97;
+  wire                when_AXI4StreamInterface_l112;
   wire                DataController_output_fire_1;
-  wire                when_AXI4StreamInterface_l131;
+  wire                when_AXI4StreamInterface_l129;
   wire                DataBuffer_continue;
   wire                DataController_output_buffer0_valid;
   wire                DataController_output_buffer0_ready;
@@ -7423,8 +7423,8 @@ module AXI4StreamReceiver (
   wire       [254:0]  DataBuffer_buffer0_buffer1_payload_state_elements_1;
   wire       [254:0]  DataBuffer_buffer0_buffer1_payload_state_elements_2;
   wire                _zz_DataController_output_buffer0_ready;
-  wire                when_AXI4StreamInterface_l155;
-  wire                when_AXI4StreamInterface_l156;
+  wire                when_AXI4StreamInterface_l157;
+  wire                when_AXI4StreamInterface_l158;
   wire                DataBuffer_buffer0_buffer1_buffer1_valid;
   wire                DataBuffer_buffer0_buffer1_buffer1_ready;
   wire       [6:0]    DataBuffer_buffer0_buffer1_buffer1_payload_round_index;
@@ -7459,8 +7459,8 @@ module AXI4StreamReceiver (
   wire       [254:0]  DataBuffer_buffer1_buffer2_payload_state_elements_1;
   wire       [254:0]  DataBuffer_buffer1_buffer2_payload_state_elements_2;
   wire                _zz_DataBuffer_buffer0_buffer1_buffer1_ready;
-  wire                when_AXI4StreamInterface_l167;
-  wire                when_AXI4StreamInterface_l168;
+  wire                when_AXI4StreamInterface_l173;
+  wire                when_AXI4StreamInterface_l174;
   wire                DataBuffer_buffer1_buffer2_buffer2_valid;
   wire                DataBuffer_buffer1_buffer2_buffer2_ready;
   wire       [6:0]    DataBuffer_buffer1_buffer2_buffer2_payload_round_index;
@@ -7495,8 +7495,8 @@ module AXI4StreamReceiver (
   wire       [254:0]  DataBuffer_buffer2_buffer3_payload_state_elements_1;
   wire       [254:0]  DataBuffer_buffer2_buffer3_payload_state_elements_2;
   wire                _zz_DataBuffer_buffer1_buffer2_buffer2_ready;
-  wire                when_AXI4StreamInterface_l179;
-  wire                when_AXI4StreamInterface_l180;
+  wire                when_AXI4StreamInterface_l189;
+  wire                when_AXI4StreamInterface_l190;
   wire                DataBuffer_buffer2_buffer3_buffer3_valid;
   wire                DataBuffer_buffer2_buffer3_buffer3_ready;
   wire       [6:0]    DataBuffer_buffer2_buffer3_buffer3_payload_round_index;
@@ -7641,14 +7641,14 @@ module AXI4StreamReceiver (
     endcase
   end
 
-  assign when_AXI4StreamInterface_l52 = (io_input_valid && io_input_ready);
-  assign when_AXI4StreamInterface_l63 = (io_input_valid && io_input_ready);
-  assign when_AXI4StreamInterface_l79 = (io_input_valid && io_input_ready);
+  assign when_AXI4StreamInterface_l50 = (io_input_valid && io_input_ready);
+  assign when_AXI4StreamInterface_l61 = (io_input_valid && io_input_ready);
+  assign when_AXI4StreamInterface_l77 = (io_input_valid && io_input_ready);
   assign DataController_output_fire = (DataController_output_valid && DataController_output_ready);
-  assign when_AXI4StreamInterface_l99 = (io_input_valid && io_input_ready);
-  assign when_AXI4StreamInterface_l114 = (io_input_valid && io_input_ready);
+  assign when_AXI4StreamInterface_l97 = (io_input_valid && io_input_ready);
+  assign when_AXI4StreamInterface_l112 = (io_input_valid && io_input_ready);
   assign DataController_output_fire_1 = (DataController_output_valid && DataController_output_ready);
-  assign when_AXI4StreamInterface_l131 = (io_input_valid && io_input_ready);
+  assign when_AXI4StreamInterface_l129 = (io_input_valid && io_input_ready);
   assign DataBuffer_continue = (((DataController_receiverState == `ReceiverState_binary_sequential_DONE) || (DataController_receiverState == `ReceiverState_binary_sequential_BLOCK_1)) || (DataController_receiverState == `ReceiverState_binary_sequential_IDLE));
   always @(*) begin
     DataController_output_ready = DataController_output_buffer0_ready;
@@ -7675,8 +7675,8 @@ module AXI4StreamReceiver (
   always @(*) begin
     DataBuffer_buffer0_buffer1_payload_state_size = DataController_output_buffer0_payload_state_size;
     DataBuffer_buffer0_buffer1_payload_state_size = DataController_output_buffer0_payload_state_size;
-    if(when_AXI4StreamInterface_l155) begin
-      if(when_AXI4StreamInterface_l156) begin
+    if(when_AXI4StreamInterface_l157) begin
+      if(when_AXI4StreamInterface_l158) begin
         DataBuffer_buffer0_buffer1_payload_state_size = DataController_lengthCounter;
       end
     end
@@ -7689,8 +7689,8 @@ module AXI4StreamReceiver (
   assign DataBuffer_buffer0_buffer1_payload_state_elements_0 = DataController_output_buffer0_payload_state_elements_0;
   assign DataBuffer_buffer0_buffer1_payload_state_elements_1 = DataController_output_buffer0_payload_state_elements_1;
   assign DataBuffer_buffer0_buffer1_payload_state_elements_2 = DataController_output_buffer0_payload_state_elements_2;
-  assign when_AXI4StreamInterface_l155 = (DataController_receiverState == `ReceiverState_binary_sequential_DONE);
-  assign when_AXI4StreamInterface_l156 = (4'b0011 < DataController_lengthCounter);
+  assign when_AXI4StreamInterface_l157 = (DataController_receiverState == `ReceiverState_binary_sequential_DONE);
+  assign when_AXI4StreamInterface_l158 = (4'b0011 < DataController_lengthCounter);
   always @(*) begin
     DataBuffer_buffer0_buffer1_ready = DataBuffer_buffer0_buffer1_buffer1_ready;
     if(when_Stream_l342_1) begin
@@ -7716,8 +7716,8 @@ module AXI4StreamReceiver (
   always @(*) begin
     DataBuffer_buffer1_buffer2_payload_state_size = DataBuffer_buffer0_buffer1_buffer1_payload_state_size;
     DataBuffer_buffer1_buffer2_payload_state_size = DataBuffer_buffer0_buffer1_buffer1_payload_state_size;
-    if(when_AXI4StreamInterface_l167) begin
-      if(when_AXI4StreamInterface_l168) begin
+    if(when_AXI4StreamInterface_l173) begin
+      if(when_AXI4StreamInterface_l174) begin
         DataBuffer_buffer1_buffer2_payload_state_size = DataController_lengthCounter;
       end
     end
@@ -7730,8 +7730,8 @@ module AXI4StreamReceiver (
   assign DataBuffer_buffer1_buffer2_payload_state_elements_0 = DataBuffer_buffer0_buffer1_buffer1_payload_state_elements_0;
   assign DataBuffer_buffer1_buffer2_payload_state_elements_1 = DataBuffer_buffer0_buffer1_buffer1_payload_state_elements_1;
   assign DataBuffer_buffer1_buffer2_payload_state_elements_2 = DataBuffer_buffer0_buffer1_buffer1_payload_state_elements_2;
-  assign when_AXI4StreamInterface_l167 = (DataController_receiverState == `ReceiverState_binary_sequential_DONE);
-  assign when_AXI4StreamInterface_l168 = (4'b0110 < DataController_lengthCounter);
+  assign when_AXI4StreamInterface_l173 = (DataController_receiverState == `ReceiverState_binary_sequential_DONE);
+  assign when_AXI4StreamInterface_l174 = (4'b0110 < DataController_lengthCounter);
   always @(*) begin
     DataBuffer_buffer1_buffer2_ready = DataBuffer_buffer1_buffer2_buffer2_ready;
     if(when_Stream_l342_2) begin
@@ -7757,8 +7757,8 @@ module AXI4StreamReceiver (
   always @(*) begin
     DataBuffer_buffer2_buffer3_payload_state_size = DataBuffer_buffer1_buffer2_buffer2_payload_state_size;
     DataBuffer_buffer2_buffer3_payload_state_size = DataBuffer_buffer1_buffer2_buffer2_payload_state_size;
-    if(when_AXI4StreamInterface_l179) begin
-      if(when_AXI4StreamInterface_l180) begin
+    if(when_AXI4StreamInterface_l189) begin
+      if(when_AXI4StreamInterface_l190) begin
         DataBuffer_buffer2_buffer3_payload_state_size = DataController_lengthCounter;
       end
     end
@@ -7771,8 +7771,8 @@ module AXI4StreamReceiver (
   assign DataBuffer_buffer2_buffer3_payload_state_elements_0 = DataBuffer_buffer1_buffer2_buffer2_payload_state_elements_0;
   assign DataBuffer_buffer2_buffer3_payload_state_elements_1 = DataBuffer_buffer1_buffer2_buffer2_payload_state_elements_1;
   assign DataBuffer_buffer2_buffer3_payload_state_elements_2 = DataBuffer_buffer1_buffer2_buffer2_payload_state_elements_2;
-  assign when_AXI4StreamInterface_l179 = (DataController_receiverState == `ReceiverState_binary_sequential_DONE);
-  assign when_AXI4StreamInterface_l180 = (4'b1001 < DataController_lengthCounter);
+  assign when_AXI4StreamInterface_l189 = (DataController_receiverState == `ReceiverState_binary_sequential_DONE);
+  assign when_AXI4StreamInterface_l190 = (4'b1001 < DataController_lengthCounter);
   always @(*) begin
     DataBuffer_buffer2_buffer3_ready = DataBuffer_buffer2_buffer3_buffer3_ready;
     if(when_Stream_l342_3) begin
@@ -7828,7 +7828,7 @@ module AXI4StreamReceiver (
     end else begin
       case(DataController_receiverState)
         `ReceiverState_binary_sequential_IDLE : begin
-          if(when_AXI4StreamInterface_l52) begin
+          if(when_AXI4StreamInterface_l50) begin
             DataController_state_indexes_0 <= DataController_lengthCounter;
             DataController_state_elements_0 <= io_input_payload;
             DataController_lengthCounter <= (DataController_lengthCounter + 4'b0001);
@@ -7836,7 +7836,7 @@ module AXI4StreamReceiver (
           end
         end
         `ReceiverState_binary_sequential_ELEMENT0 : begin
-          if(when_AXI4StreamInterface_l63) begin
+          if(when_AXI4StreamInterface_l61) begin
             DataController_state_indexes_1 <= DataController_lengthCounter;
             DataController_state_elements_1 <= io_input_payload;
             DataController_lengthCounter <= (DataController_lengthCounter + 4'b0001);
@@ -7849,7 +7849,7 @@ module AXI4StreamReceiver (
           end
         end
         `ReceiverState_binary_sequential_ELEMENT1 : begin
-          if(when_AXI4StreamInterface_l79) begin
+          if(when_AXI4StreamInterface_l77) begin
             DataController_state_indexes_2 <= DataController_lengthCounter;
             DataController_state_elements_2 <= io_input_payload;
             DataController_lengthCounter <= (DataController_lengthCounter + 4'b0001);
@@ -7868,7 +7868,7 @@ module AXI4StreamReceiver (
             DataController_state_elements_0 <= 255'h0;
             DataController_state_elements_1 <= 255'h0;
             DataController_state_elements_2 <= 255'h0;
-            if(when_AXI4StreamInterface_l99) begin
+            if(when_AXI4StreamInterface_l97) begin
               DataController_state_indexes_0 <= DataController_lengthCounter;
               DataController_state_elements_0 <= io_input_payload;
               DataController_lengthCounter <= (DataController_lengthCounter + 4'b0001);
@@ -7879,7 +7879,7 @@ module AXI4StreamReceiver (
           end
         end
         `ReceiverState_binary_sequential_BLOCK_IDLE : begin
-          if(when_AXI4StreamInterface_l114) begin
+          if(when_AXI4StreamInterface_l112) begin
             DataController_state_indexes_0 <= DataController_lengthCounter;
             DataController_state_elements_0 <= io_input_payload;
             DataController_lengthCounter <= (DataController_lengthCounter + 4'b0001);
@@ -7896,7 +7896,7 @@ module AXI4StreamReceiver (
             DataController_state_elements_0 <= 255'h0;
             DataController_state_elements_1 <= 255'h0;
             DataController_state_elements_2 <= 255'h0;
-            if(when_AXI4StreamInterface_l131) begin
+            if(when_AXI4StreamInterface_l129) begin
               DataController_state_elements_0 <= io_input_payload;
               DataController_lengthCounter <= 4'b0001;
               DataController_receiverState <= `ReceiverState_binary_sequential_ELEMENT0;
@@ -8425,7 +8425,7 @@ module MDSMatrixMultiplier_8 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -8721,7 +8721,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -8745,7 +8745,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -8769,7 +8769,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -8793,7 +8793,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -8817,7 +8817,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -8841,7 +8841,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -8865,7 +8865,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -8889,7 +8889,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -8913,7 +8913,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -8937,7 +8937,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -8961,7 +8961,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -8985,7 +8985,7 @@ module MDSMatrixMultiplier_8 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -9003,7 +9003,7 @@ module MDSMatrixMultiplier_8 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -9253,7 +9253,7 @@ module MDSMatrixMultiplier_7 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -9549,7 +9549,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -9573,7 +9573,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -9597,7 +9597,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -9621,7 +9621,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -9645,7 +9645,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -9669,7 +9669,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -9693,7 +9693,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -9717,7 +9717,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -9741,7 +9741,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -9765,7 +9765,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -9789,7 +9789,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -9813,7 +9813,7 @@ module MDSMatrixMultiplier_7 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -9831,7 +9831,7 @@ module MDSMatrixMultiplier_7 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -10081,7 +10081,7 @@ module MDSMatrixMultiplier_6 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -10377,7 +10377,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -10401,7 +10401,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -10425,7 +10425,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -10449,7 +10449,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -10473,7 +10473,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -10497,7 +10497,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -10521,7 +10521,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -10545,7 +10545,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -10569,7 +10569,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -10593,7 +10593,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -10617,7 +10617,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -10641,7 +10641,7 @@ module MDSMatrixMultiplier_6 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -10659,7 +10659,7 @@ module MDSMatrixMultiplier_6 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -11256,7 +11256,7 @@ module MDSMatrixMultiplier_5 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -11552,7 +11552,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -11576,7 +11576,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -11600,7 +11600,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -11624,7 +11624,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -11648,7 +11648,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -11672,7 +11672,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -11696,7 +11696,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -11720,7 +11720,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -11744,7 +11744,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -11768,7 +11768,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -11792,7 +11792,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -11816,7 +11816,7 @@ module MDSMatrixMultiplier_5 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -11834,7 +11834,7 @@ module MDSMatrixMultiplier_5 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -12084,7 +12084,7 @@ module MDSMatrixMultiplier_4 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -12380,7 +12380,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -12404,7 +12404,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -12428,7 +12428,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -12452,7 +12452,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -12476,7 +12476,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -12500,7 +12500,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -12524,7 +12524,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -12548,7 +12548,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -12572,7 +12572,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -12596,7 +12596,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -12620,7 +12620,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -12644,7 +12644,7 @@ module MDSMatrixMultiplier_4 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -12662,7 +12662,7 @@ module MDSMatrixMultiplier_4 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -12912,7 +12912,7 @@ module MDSMatrixMultiplier_3 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -13208,7 +13208,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -13232,7 +13232,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -13256,7 +13256,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -13280,7 +13280,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -13304,7 +13304,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -13328,7 +13328,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -13352,7 +13352,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -13376,7 +13376,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -13400,7 +13400,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -13424,7 +13424,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -13448,7 +13448,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -13472,7 +13472,7 @@ module MDSMatrixMultiplier_3 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -13490,7 +13490,7 @@ module MDSMatrixMultiplier_3 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -14422,7 +14422,7 @@ module MDSMatrixMultiplier_2 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -14718,7 +14718,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -14742,7 +14742,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -14766,7 +14766,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -14790,7 +14790,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -14814,7 +14814,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -14838,7 +14838,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -14862,7 +14862,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -14886,7 +14886,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -14910,7 +14910,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -14934,7 +14934,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -14958,7 +14958,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -14982,7 +14982,7 @@ module MDSMatrixMultiplier_2 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -15000,7 +15000,7 @@ module MDSMatrixMultiplier_2 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -15250,7 +15250,7 @@ module MDSMatrixMultiplier_1 (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -15546,7 +15546,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -15570,7 +15570,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -15594,7 +15594,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -15618,7 +15618,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -15642,7 +15642,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -15666,7 +15666,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -15690,7 +15690,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -15714,7 +15714,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -15738,7 +15738,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -15762,7 +15762,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -15786,7 +15786,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -15810,7 +15810,7 @@ module MDSMatrixMultiplier_1 (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -15828,7 +15828,7 @@ module MDSMatrixMultiplier_1 (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};
@@ -16078,7 +16078,7 @@ module MDSMatrixMultiplier (
   reg        [254:0]  mulOp2s_10;
   reg        [254:0]  mulOp2s_11;
   wire       [3059:0] _zz_mulOp2s_0;
-  wire                when_MDSMatrixMultiplier_l51;
+  wire                when_MDSMatrixMultiplier_l55;
   wire       [3059:0] _zz_mulOp2s_0_1;
   wire       [3059:0] _zz_mulOp2s_0_2;
   wire       [3059:0] _zz_mulOp2s_0_3;
@@ -16374,7 +16374,7 @@ module MDSMatrixMultiplier (
         mulOp2s_0 = _zz_mulOp2s_0[254 : 0];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_0 = _zz_mulOp2s_0_1[254 : 0];
         end else begin
           mulOp2s_0 = _zz_mulOp2s_0_2[254 : 0];
@@ -16398,7 +16398,7 @@ module MDSMatrixMultiplier (
         mulOp2s_1 = _zz_mulOp2s_0[509 : 255];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_1 = _zz_mulOp2s_0_1[509 : 255];
         end else begin
           mulOp2s_1 = _zz_mulOp2s_0_2[509 : 255];
@@ -16422,7 +16422,7 @@ module MDSMatrixMultiplier (
         mulOp2s_2 = _zz_mulOp2s_0[764 : 510];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_2 = _zz_mulOp2s_0_1[764 : 510];
         end else begin
           mulOp2s_2 = _zz_mulOp2s_0_2[764 : 510];
@@ -16446,7 +16446,7 @@ module MDSMatrixMultiplier (
         mulOp2s_3 = _zz_mulOp2s_0[1019 : 765];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_3 = _zz_mulOp2s_0_1[1019 : 765];
         end else begin
           mulOp2s_3 = _zz_mulOp2s_0_2[1019 : 765];
@@ -16470,7 +16470,7 @@ module MDSMatrixMultiplier (
         mulOp2s_4 = _zz_mulOp2s_0[1274 : 1020];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_4 = _zz_mulOp2s_0_1[1274 : 1020];
         end else begin
           mulOp2s_4 = _zz_mulOp2s_0_2[1274 : 1020];
@@ -16494,7 +16494,7 @@ module MDSMatrixMultiplier (
         mulOp2s_5 = _zz_mulOp2s_0[1529 : 1275];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_5 = _zz_mulOp2s_0_1[1529 : 1275];
         end else begin
           mulOp2s_5 = _zz_mulOp2s_0_2[1529 : 1275];
@@ -16518,7 +16518,7 @@ module MDSMatrixMultiplier (
         mulOp2s_6 = _zz_mulOp2s_0[1784 : 1530];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_6 = _zz_mulOp2s_0_1[1784 : 1530];
         end else begin
           mulOp2s_6 = _zz_mulOp2s_0_2[1784 : 1530];
@@ -16542,7 +16542,7 @@ module MDSMatrixMultiplier (
         mulOp2s_7 = _zz_mulOp2s_0[2039 : 1785];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_7 = _zz_mulOp2s_0_1[2039 : 1785];
         end else begin
           mulOp2s_7 = _zz_mulOp2s_0_2[2039 : 1785];
@@ -16566,7 +16566,7 @@ module MDSMatrixMultiplier (
         mulOp2s_8 = _zz_mulOp2s_0[2294 : 2040];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_8 = _zz_mulOp2s_0_1[2294 : 2040];
         end else begin
           mulOp2s_8 = _zz_mulOp2s_0_2[2294 : 2040];
@@ -16590,7 +16590,7 @@ module MDSMatrixMultiplier (
         mulOp2s_9 = _zz_mulOp2s_0[2549 : 2295];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_9 = _zz_mulOp2s_0_1[2549 : 2295];
         end else begin
           mulOp2s_9 = _zz_mulOp2s_0_2[2549 : 2295];
@@ -16614,7 +16614,7 @@ module MDSMatrixMultiplier (
         mulOp2s_10 = _zz_mulOp2s_0[2804 : 2550];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_10 = _zz_mulOp2s_0_1[2804 : 2550];
         end else begin
           mulOp2s_10 = _zz_mulOp2s_0_2[2804 : 2550];
@@ -16638,7 +16638,7 @@ module MDSMatrixMultiplier (
         mulOp2s_11 = _zz_mulOp2s_0[3059 : 2805];
       end
       4'b0101 : begin
-        if(when_MDSMatrixMultiplier_l51) begin
+        if(when_MDSMatrixMultiplier_l55) begin
           mulOp2s_11 = _zz_mulOp2s_0_1[3059 : 2805];
         end else begin
           mulOp2s_11 = _zz_mulOp2s_0_2[3059 : 2805];
@@ -16656,7 +16656,7 @@ module MDSMatrixMultiplier (
     endcase
   end
 
-  assign when_MDSMatrixMultiplier_l51 = (io_input_payload_state_index == 4'b0101);
+  assign when_MDSMatrixMultiplier_l55 = (io_input_payload_state_index == 4'b0101);
   assign _zz_mulOp2s_0_1 = 3060'h0;
   assign _zz_mulOp2s_0_2 = {1785'h0,{mdsMatrix_t5_io_data_ports_4,{mdsMatrix_t5_io_data_ports_3,{mdsMatrix_t5_io_data_ports_2,{mdsMatrix_t5_io_data_ports_1,mdsMatrix_t5_io_data_ports_0}}}}};
   assign _zz_mulOp2s_0_3 = {765'h0,{mdsMatrix_t9_io_data_ports_8,{mdsMatrix_t9_io_data_ports_7,{mdsMatrix_t9_io_data_ports_6,{mdsMatrix_t9_io_data_ports_5,{mdsMatrix_t9_io_data_ports_4,{mdsMatrix_t9_io_data_ports_3,{mdsMatrix_t9_io_data_ports_2,{mdsMatrix_t9_io_data_ports_1,mdsMatrix_t9_io_data_ports_0}}}}}}}}};

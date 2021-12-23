@@ -1,6 +1,11 @@
 *.class
 *.log
 *.bak
+*.xml
+
+# python
+__pycache__
+sim_build
 
 # sbt specific
 .cache/
@@ -29,6 +34,7 @@ bin/
 .project
 .settings
 .cache-main
+.vscode
 
 #User
 /*.vhd

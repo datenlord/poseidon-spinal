@@ -15,6 +15,8 @@ function help()
     echo "-e: Specify a component in the project to be built and tested."
     echo "-h: Show the usage info of this shell script."
     echo "-l: Show all components in this project."
+    echo "-c: check format "
+    echo "-f: fix format "
 }
 
 #show all components
@@ -38,8 +40,12 @@ function build_and_test()
     if [[ $component != ${Components[0]} && $component != ${Components[1]} ]] 
     then
         echo -e "Building ${component} ... \n"
-        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sbt "runMain poseidon.${object}"
+
+        #docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sbt "runMain poseidon.${object}"
         #docker exec -w /spinalworkspace/poseidon-spinalhdl/ spinalhdl02 sbt "runMain poseidon.${object}"
+        
+        #docker exec -w /spinalworkspace/poseidon/ spinalhdl02 mill poseidon.runMain poseidon.${object}
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
     fi
 
     echo -e "Compile And Build ${component} successfully !!!\n"
@@ -58,15 +64,30 @@ function build_and_test()
 
 
 # Check parameters
-while getopts "hlae:" opt
+while getopts "cfhlae:" opt
 do
     case $opt in
+        c)
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
+        black --check $(find ./src -name "*.py")
+        # mill poseidon.checkFormat
+        # mill poseidon.fix --check
+        ;;
+        
+        f)
+        black $(find ./src -name "*.py")
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
+        ;;
+
         h) help
         ;;
+
         l) show_all_components
         ;;
+
         e) build_and_test $OPTARG
         ;;
+        
         a) 
         for i in ${Components[*]};do
             build_and_test $i
