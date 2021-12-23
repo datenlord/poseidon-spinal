@@ -21,9 +21,8 @@ jobs:
         run : |
           docker pull datenlord/spinal-cocotb:1.6.1
           pip install black
-          black --check $(find ./src -name "*.py")
           
-          ./run.sh -e PoseidonTopLevel
+          ./run.sh -c -e PoseidonTopLevel
       - name: Setup tmate session
         if: ${{ failure() }}
         uses: mxschmitt/action-tmate@v3
