@@ -48,18 +48,12 @@ async def generate_input(dut):
         dut.io_input_valid.value = random.random() > 0.2
         dut.io_input_payload_state_size.value = state_size
         dut.io_input_payload_state_id.value = cases_count % pow(2, 4)
-        dut.io_input_payload_state_elements_0.value = state_elements[0]
-        dut.io_input_payload_state_elements_1.value = state_elements[1]
-        dut.io_input_payload_state_elements_2.value = state_elements[2]
-        dut.io_input_payload_state_elements_3.value = state_elements[3]
-        dut.io_input_payload_state_elements_4.value = state_elements[4]
-        dut.io_input_payload_state_elements_5.value = state_elements[5]
-        dut.io_input_payload_state_elements_6.value = state_elements[6]
-        dut.io_input_payload_state_elements_7.value = state_elements[7]
-        dut.io_input_payload_state_elements_8.value = state_elements[8]
-        dut.io_input_payload_state_elements_9.value = state_elements[9]
-        dut.io_input_payload_state_elements_10.value = state_elements[10]
-        dut.io_input_payload_state_elements_11.value = state_elements[11]
+        for j in range(12):
+            exec(
+                "dut.io_input_payload_state_elements_{}.value = state_elements[{}]".format(
+                    j, j
+                )
+            )
 
         await RisingEdge(dut.clk)
         # wait handshake

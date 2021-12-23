@@ -4,8 +4,8 @@ from cocotb.clock import Clock
 from cocotb.result import TestSuccess, TestFailure
 from cocotb.triggers import RisingEdge
 from queue import Queue
-from poseidon_python import ff, poseidon_ff, basic, constants
-
+from poseidon_python import finite_field as ff
+from poseidon_python import poseidon_ff, basic, constants
 
 ref_inputs = Queue(maxsize=80)
 ref_outputs = Queue(maxsize=80)  # store reference results
@@ -95,18 +95,13 @@ async def check_output(dut):
             round_index, state_index, state_size, state_element = ref_inputs.get()
             ref_res = ref_outputs.get()
             dut_res = []
-            dut_res.append(int(dut.io_output_payload_state_elements_0.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_1.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_2.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_3.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_4.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_5.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_6.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_7.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_8.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_9.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_10.value))
-            dut_res.append(int(dut.io_output_payload_state_elements_11.value))
+            for i in range(12):
+                exec(
+                    "dut_res.append(int(dut.io_output_payload_state_elements_{}.value))".format(
+                        i
+                    )
+                )
+
             for i in range(12):
                 if ref_res[i].value != dut_res[i]:
                     print("test case {} failed".format(count_cases))

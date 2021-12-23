@@ -128,8 +128,6 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
   io.output << threadAccumulator.output
 }
 
-
-
 object MDSMatrixAddersVerilog {
   def main(args: Array[String]): Unit = {
     val config = PoseidonGenerics(

@@ -42,60 +42,25 @@ def get_random_input():
 
 
 def set_input_ports(dut, values0, values1, values2):
-    dut.io_inputs_0_payload_state_elements_0.value = values0[0]
-    dut.io_inputs_0_payload_state_elements_1.value = values0[1]
-    dut.io_inputs_0_payload_state_elements_2.value = values0[2]
-    dut.io_inputs_0_payload_state_elements_3.value = values0[3]
-    dut.io_inputs_0_payload_state_elements_4.value = values0[4]
-    dut.io_inputs_0_payload_state_elements_5.value = values0[5]
-    dut.io_inputs_0_payload_state_elements_6.value = values0[6]
-    dut.io_inputs_0_payload_state_elements_7.value = values0[7]
-    dut.io_inputs_0_payload_state_elements_8.value = values0[8]
-    dut.io_inputs_0_payload_state_elements_9.value = values0[9]
-    dut.io_inputs_0_payload_state_elements_10.value = values0[10]
-    dut.io_inputs_0_payload_state_elements_11.value = values0[11]
-
-    dut.io_inputs_1_payload_state_elements_0.value = values1[0]
-    dut.io_inputs_1_payload_state_elements_1.value = values1[1]
-    dut.io_inputs_1_payload_state_elements_2.value = values1[2]
-    dut.io_inputs_1_payload_state_elements_3.value = values1[3]
-    dut.io_inputs_1_payload_state_elements_4.value = values1[4]
-    dut.io_inputs_1_payload_state_elements_5.value = values1[5]
-    dut.io_inputs_1_payload_state_elements_6.value = values1[6]
-    dut.io_inputs_1_payload_state_elements_7.value = values1[7]
-    dut.io_inputs_1_payload_state_elements_8.value = values1[8]
-    dut.io_inputs_1_payload_state_elements_9.value = values1[9]
-    dut.io_inputs_1_payload_state_elements_10.value = values1[10]
-    dut.io_inputs_1_payload_state_elements_11.value = values1[11]
-
-    dut.io_inputs_2_payload_state_elements_0.value = values2[0]
-    dut.io_inputs_2_payload_state_elements_1.value = values2[1]
-    dut.io_inputs_2_payload_state_elements_2.value = values2[2]
-    dut.io_inputs_2_payload_state_elements_3.value = values2[3]
-    dut.io_inputs_2_payload_state_elements_4.value = values2[4]
-    dut.io_inputs_2_payload_state_elements_5.value = values2[5]
-    dut.io_inputs_2_payload_state_elements_6.value = values2[6]
-    dut.io_inputs_2_payload_state_elements_7.value = values2[7]
-    dut.io_inputs_2_payload_state_elements_8.value = values2[8]
-    dut.io_inputs_2_payload_state_elements_9.value = values2[9]
-    dut.io_inputs_2_payload_state_elements_10.value = values2[10]
-    dut.io_inputs_2_payload_state_elements_11.value = values2[11]
+    for i in range(3):
+        for j in range(12):
+            exec(
+                "dut.io_inputs_{}_payload_state_elements_{}.value = values{}[{}]".format(
+                    i, j, i, j
+                )
+            )
 
 
 def check_output_ports(dut, ref_res):
     dut_res = []
-    dut_res.append(dut.io_output_payload_state_elements_0.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_1.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_2.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_3.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_4.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_5.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_6.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_7.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_8.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_9.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_10.value.integer)
-    dut_res.append(dut.io_output_payload_state_elements_11.value.integer)
+
+    for i in range(12):
+        exec(
+            "dut_res.append(dut.io_output_payload_state_elements_{}.value.integer)".format(
+                i
+            )
+        )
+
     for i in range(12):
         if dut_res[i] != ref_res[i]:
             return False, dut_res

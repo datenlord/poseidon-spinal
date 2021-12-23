@@ -83,34 +83,6 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     output.state_element := modAdder.io.res_o
   }
 
-  // val SBox5Stage = new Area {
-  //   val input = AddRoundConstantStage.output.m2sPipe().s2mPipe()
-  //   val SBoxNum = 3
-
-  //   val SBox5Insts = for(i <- 0 until SBoxNum) yield new SBox5(g)
-
-  //   val DemuxSelect = OHToUInt( OHMasking.first(SBox5Insts.map(_.io.input.ready)) )
-  //   val SBox5InstsInputs = StreamDemux(input,DemuxSelect,SBoxNum)
-  //   (SBox5Insts.map(_.io.input),SBox5InstsInputs).zipped.foreach(_<<_)
-
-  //   val MuxSelect = OHToUInt( OHMasking.first(SBox5Insts.map(_.io.output.valid)))
-  //   val output = StreamMux(MuxSelect,SBox5Insts.map(_.io.output))
-  // }
-
-  // val MDSMixStage = new Area{
-  //   val input = SBox5Stage.output.m2sPipe().s2mPipe()
-
-  //   val MultiplierNum = 3
-  //   val matrixMultiplierInsts = for(i <- 0 until MultiplierNum) yield new MDSMatrixMultiplier(g)
-
-  //   val DemuxSelect = OHToUInt( OHMasking.first(matrixMultiplierInsts.map(_.io.input.ready)))
-  //   val MultiplierInputs = StreamDemux(input, DemuxSelect, MultiplierNum)
-  //   (matrixMultiplierInsts.map(_.io.input),MultiplierInputs).zipped.foreach(_<<_)
-
-  //   val MuxSelect = OHToUInt( OHMasking.first(matrixMultiplierInsts.map(_.io.output.valid)) )
-  //   val output = StreamMux(MuxSelect, matrixMultiplierInsts.map(_.io.output))
-  // }
-
   val SBox5Stage = new Area {
 
     val input = AddRoundConstantStage.output.m2sPipe().s2mPipe()
@@ -168,7 +140,7 @@ object PoseidonThreadVerilog {
     )
     SpinalConfig(
       mode = Verilog,
-      targetDirectory = "./src/main/verilog/PoseidonThread"
+      targetDirectory = "./src/main/verilog/"
     ).generate(new PoseidonThread(config))
   }
 }

@@ -8,7 +8,7 @@ PWD = $(shell pwd)
 export PYTHONPATH := $(PWD)/../../reference_model:$(PYTHONPATH)
 export PYTHONPATH := $(PWD)/../../reference_model/poseidon_python:$(PYTHONPATH)
 
-VERILOG_SOURCES += ../../main/verilog/PoseidonThread/PoseidonThread.v
+VERILOG_SOURCES += ../../main/verilog/PoseidonThread.v
 VERILOG_SOURCES += ../../main/verilog/ModAdder.v
 VERILOG_SOURCES += ../../main/verilog/ModMultiplier.v
 

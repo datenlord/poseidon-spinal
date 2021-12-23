@@ -7,21 +7,21 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 
 ref_outputs = Queue(maxsize=5)  # store reference results
-cases_num = 3000  # the number of test cases
+cases_num = 10  # the number of test cases
 
 
 async def reset_dut(dut):
-    dut.rst.value = 0
+    dut.reset.value = 0
     await RisingEdge(dut.clk)
-    dut.rst.value = 1
+    dut.reset.value = 1
     for i in range(3):
         await RisingEdge(dut.clk)
 
-    dut.rst.value = 0
+    dut.reset.value = 0
 
 
 def get_random_values():
-    rand_valid = random.random() > 0.3
+    rand_valid = True  # (random.random()>0.2)
     rand_op1 = ff.PrimeField(random.randint(0, ff.p - 1))
     rand_op2 = ff.PrimeField(random.randint(0, ff.p - 1))
     return rand_valid, rand_op1, rand_op2
@@ -51,15 +51,13 @@ async def check_output(dut):
     cases_count = 0
     while cases_count < cases_num:
 
-        ready = random.random() > 0.3
+        ready = True  # (random.random() > 0.3)
         dut.res_ready_i.value = ready
         await RisingEdge(dut.clk)
         if dut.res_ready_i.value & dut.res_valid_o.value == True:
             cases_count += 1
             op1, op2, ref_res = ref_outputs.get()
             dut_res = int(dut.res_o.value)
-            # print("dut mediate_res:")
-            # print(hex(int(dut.mediate_res.value)))
             assert (
                 dut_res == ref_res
             ), "the result of {} MonPro {} is wrong \n ref:{} \n dut:{}".format(
@@ -69,8 +67,8 @@ async def check_output(dut):
     raise TestSuccess(" pass {} test cases".format(cases_num))
 
 
-@cocotb.test(timeout_time=300000, timeout_unit="ns")
-async def ModMultiplierTest(dut):
+@cocotb.test(timeout_time=100000000, timeout_unit="ns")
+async def MontMultiplierTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
     dut.op_valid_i.value = False

@@ -4,7 +4,8 @@ from cocotb.clock import Clock
 from cocotb.result import TestSuccess
 from cocotb.triggers import RisingEdge
 from queue import Queue
-from poseidon_python import ff
+
+from poseidon_python import finite_field as ff
 
 ref_outputs = Queue(maxsize=20)  # store reference results
 cases_num = 4000

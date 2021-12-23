@@ -182,7 +182,7 @@ object MDSMatrixMultiplier_fullVerilog {
     )
     SpinalConfig(
       mode = Verilog,
-      targetDirectory = "./src/main/verilog/mdsMatrixMultiplier_full"
+      targetDirectory = "./src/main/verilog/"
     ).generate(MDSMatrixMultiplier_full(config))
   }
 }

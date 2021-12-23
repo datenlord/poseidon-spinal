@@ -1,5 +1,5 @@
 import basic
-import ff
+import finite_field as ff
 import constants
 import os
 

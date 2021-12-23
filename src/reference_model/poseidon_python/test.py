@@ -1,4 +1,4 @@
-from ff import PrimeField
+from finite_field import PrimeField
 
 
 def add(a, b):

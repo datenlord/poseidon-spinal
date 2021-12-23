@@ -80,17 +80,6 @@ class DataLoopbackBuffer(g: PoseidonGenerics) extends Component {
       .stage()
   }
 
-  // io.residue := g.t_max
-  // when(buffer0.map(_.valid).andR){
-  //   io.residue := 9
-  // } elsewhen(buffer1.map(_.valid).andR){
-  //   io.residue := 6
-  // } elsewhen(buffer2.map(_.valid).andR){
-  //   io.residue := 3
-  // } elsewhen(buffer3.map(_.valid).andR){
-  //   io.residue := 0
-  // }
-  // (io.outputs, buffer3).zipped.foreach(_<<_)
   val buffers = Vec(Vec(Stream(new Context(g)), g.thread_num), 4)
   (buffers(0), buffer3).zipped.foreach(_ <-< _)
   for (i <- 1 until 4) (buffers(i), buffers(i - 1)).zipped.foreach(_ <-< _)
@@ -216,7 +205,7 @@ object PoseidonTopLevelVerilog {
 
     SpinalConfig(
       mode = Verilog,
-      targetDirectory = "./src/main/verilog/PoseidonTopLevel"
+      targetDirectory = "./src/main/verilog/"
     ).generate(new PoseidonTopLevel(config))
   }
 }
