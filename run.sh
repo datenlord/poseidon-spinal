@@ -67,11 +67,13 @@ do
     case $opt in
         c)
         docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
+        #docker exec -w /spinalworkspace/poseidon-new/ spinalhdl02 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
         black --check $(find ./src -name "*.py")
         ;;
         
         f)
         docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
+        #docker exec -w /spinalworkspace/poseidon-new/ spinalhdl02 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
         black $(find ./src -name "*.py")
         ;;
 
