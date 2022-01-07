@@ -29,7 +29,7 @@ class MDSMatrix(t: Int, data_width: Int) extends Component {
   }
 
   val filename =
-    "./src/reference_model/poseidon_python/mds_matrixs_ff/mds_matrix_ff_%d.txt"
+    "./poseidon_constants/mds_matrixs_ff/mds_matrix_ff_%d.txt"
   val mds_matrix = get_matrix_from_file(t, t, filename.format(t))
   val matrix_transpose = for (i <- 0 until t) yield mds_matrix.map(_(i))
   val mds_roms =
@@ -49,7 +49,7 @@ case class RoundConstantsConfig(
     round_num: Int,
     ports_num: Int,
     data_width: Int
-) {}
+)
 
 case class ReadPort(t_max: Int, round_max: Int, data_width: Int)
     extends Bundle {
@@ -66,7 +66,7 @@ class RoundConstants(config: RoundConstantsConfig) extends Component {
     )
   }
   val filename =
-    "./src/reference_model/poseidon_python/round_constants_ff/round_constants_ff_%d.txt"
+    "./poseidon_constants/round_constants_ff/round_constants_ff_%d.txt"
   val constants_matrix =
     get_matrix_from_file(config.round_num, config.t, filename.format(config.t))
   val matrix_transpose =

@@ -4,7 +4,6 @@ import spinal.lib._
 import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 
 object MDSContextInitValue {
-
   def apply(g: PoseidonGenerics): MDSContext = {
     val initValue = MDSContext(g)
     initValue.state_elements.foreach(_ := 0)
@@ -13,11 +12,9 @@ object MDSContextInitValue {
     initValue.round_index := 0
     initValue
   }
-
 }
 
 class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
-
   val io = new Bundle {
     val inputs = Vec(slave Stream (MDSContext(g)), 3)
     val output = master Stream (MDSContext(g))

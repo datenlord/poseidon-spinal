@@ -158,14 +158,3 @@ def testexp():
     if p1.fromMont() != pow(a, 8) % p1.N:
         print("false")
     print("pass exp test!!")
-
-
-v = 0x11EFCB7C89C70F0124F7A5207AE9358022A7C2BEE13D4C79B5DCA2AE1C44CD1C
-print(hex(v))
-a = PrimeField(0)
-a.value = v
-b = a.ModExp(a.value, 2)
-print(hex(b))
-a.value = b
-b = a.ModExp(a.value, 2)
-print(hex(b))

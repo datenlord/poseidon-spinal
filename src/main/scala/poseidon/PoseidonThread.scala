@@ -88,7 +88,9 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     val input = AddRoundConstantStage.output.m2sPipe().s2mPipe()
 
     val SBoxNum = 3
-    val SBox5Insts = for (i <- 0 until SBoxNum) yield new SBox5(g)
+    //val SBox5Insts = for (i <- 0 until SBoxNum) yield new SBox5(g)
+    val SBox5Insts: IndexedSeq[SBox5] = IndexedSeq.fill(SBoxNum)(SBox5(g))
+
     val (demux_input, fifo_input) = StreamFork2(input, true)
 
     val DemuxSelect = OHToUInt(
@@ -108,8 +110,9 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     val input = SBox5Stage.output.m2sPipe().s2mPipe()
 
     val MultiplierNum = 3
-    val matrixMultiplierInsts =
-      for (i <- 0 until MultiplierNum) yield new MDSMatrixMultiplier(g)
+    val matrixMultiplierInsts: IndexedSeq[MDSMatrixMultiplier] =
+      IndexedSeq.fill(MultiplierNum)(MDSMatrixMultiplier(g))
+    //for (i <- 0 until MultiplierNum) yield new
 
     val (demux_input, fifo_input) = StreamFork2(input, true)
     val DemuxSelect = OHToUInt(

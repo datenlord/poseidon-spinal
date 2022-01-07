@@ -45,10 +45,8 @@ case class MDSMatrixMultiplier(g: PoseidonGenerics) extends Component {
   switch(io.input.state_size) {
     is(3) {
       mulOp2s.assignFromBits(
-        B(
-          0,
-          (g.t_max - 3) * g.data_width bits
-        ) ## mdsMatrix_t3.io.data_ports.asBits
+        B(0, (g.t_max - 3) * g.data_width bits)
+          ## mdsMatrix_t3.io.data_ports.asBits
       )
     }
     is(5) {
@@ -56,19 +54,15 @@ case class MDSMatrixMultiplier(g: PoseidonGenerics) extends Component {
         mulOp2s.assignFromBits(B(0, g.t_max * g.data_width bits))
       } otherwise {
         mulOp2s.assignFromBits(
-          B(
-            0,
-            (g.t_max - 5) * g.data_width bits
-          ) ## mdsMatrix_t5.io.data_ports.asBits
+          B(0, (g.t_max - 5) * g.data_width bits)
+            ## mdsMatrix_t5.io.data_ports.asBits
         )
       }
     }
     is(9) {
       mulOp2s.assignFromBits(
-        B(
-          0,
-          (g.t_max - 9) * g.data_width bits
-        ) ## mdsMatrix_t9.io.data_ports.asBits
+        B(0, (g.t_max - 9) * g.data_width bits)
+          ## mdsMatrix_t9.io.data_ports.asBits
       )
     }
     is(12) {
@@ -81,7 +75,9 @@ case class MDSMatrixMultiplier(g: PoseidonGenerics) extends Component {
 
   val mulOp1s =
     StreamFork(io.input.translateWith(io.input.state_element), g.t_max, true)
-  val modMultipliers = for (i <- 0 until g.t_max) yield ModMultiplier()
+  //val modMultipliers = for (i <- 0 until g.t_max) yield ModMultiplier()
+  val modMultipliers: IndexedSeq[ModMultiplier] =
+    IndexedSeq.fill(g.t_max)(ModMultiplier())
 
   for (i <- 0 until g.t_max) {
     modMultipliers(i).io.cmd.arbitrationFrom(mulOp1s(i))

@@ -41,7 +41,7 @@ function build_and_test()
     then
         echo -e "Building ${component} ... \n"
         
-        #docker exec -w /spinalworkspace/poseidon/ spinalhdl02 mill poseidon.runMain poseidon.${object}
+        #docker exec -w /spinalworkspace/poseidon-new/ spinalhdl02 mill poseidon.runMain poseidon.${object}
         docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
     fi
 
@@ -55,7 +55,7 @@ function build_and_test()
     fi
 
     docker run --rm -v $(pwd):$(pwd) -w $(pwd)/src/tests/$testbench -u root datenlord/spinal-cocotb:1.6.1 make
-    #docker exec -w /spinalworkspace/poseidon/src/tests/$testbench spinalhdl02 make
+    #docker exec -w /spinalworkspace/poseidon-new/src/tests/$testbench spinalhdl02 make
     
     rm -f ./src/tests/$testbench/*.bin
 }

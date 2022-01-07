@@ -133,10 +133,6 @@ def poseidon_hash_ff(state_ff):
     return state_ff[1]
 
 
-# print(poseidon_hash([0,1]))
-# print(hex(poseidon_hash([0,1,2,3,4,5,6,7])))
-
-
 def output_mds_matrix_ff():
     """get all mds_matrix in Montgomery domain and write to files"""
     os.mkdir("mds_matrixs_ff")

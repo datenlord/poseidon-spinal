@@ -47,7 +47,7 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
     switch(receiverState) {
       is(IDLE) {
         io.input.ready := True
-        when(io.input.fire) {
+        when(io.input.fire()) {
           state_indexes(0) := lengthCounter
           state_elements(0) := io.input.payload
 
@@ -58,7 +58,7 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
 
       is(ELEMENT0) {
         io.input.ready := True
-        when(io.input.fire) {
+        when(io.input.fire()) {
           state_indexes(1) := lengthCounter
           state_elements(1) := io.input.payload
           lengthCounter := lengthCounter + 1
@@ -74,7 +74,7 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
 
       is(ELEMENT1) {
         io.input.ready := True
-        when(io.input.fire) {
+        when(io.input.fire()) {
           state_indexes(2) := lengthCounter
           state_elements(2) := io.input.payload
 
@@ -94,7 +94,7 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
           state_elements.foreach(_ := 0)
           io.input.ready := True
 
-          when(io.input.fire) {
+          when(io.input.fire()) {
             state_indexes(0) := lengthCounter
             state_elements(0) := io.input.payload
 
@@ -126,7 +126,7 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
           state_indexes.foreach(_ := 0)
           state_elements.foreach(_ := 0)
           io.input.ready := True
-          when(io.input.fire) {
+          when(io.input.fire()) {
             state_elements(0) := io.input.payload
             lengthCounter := 1
             receiverState := ELEMENT0
@@ -135,7 +135,6 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
           }
         }
       }
-
     }
   }
 

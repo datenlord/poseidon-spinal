@@ -44,22 +44,14 @@ def get_random_input():
 def set_input_ports(dut, values0, values1, values2):
     for i in range(3):
         for j in range(12):
-            exec(
-                "dut.io_inputs_{}_payload_state_elements_{}.value = values{}[{}]".format(
-                    i, j, i, j
-                )
-            )
+            exec(f"dut.io_inputs_{i}_payload_state_elements_{j}.value = values{i}[{j}]")
 
 
 def check_output_ports(dut, ref_res):
     dut_res = []
 
     for i in range(12):
-        exec(
-            "dut_res.append(dut.io_output_payload_state_elements_{}.value.integer)".format(
-                i
-            )
-        )
+        exec(f"dut_res.append(dut.io_output_payload_state_elements_{i}.value.integer)")
 
     for i in range(12):
         if dut_res[i] != ref_res[i]:
@@ -91,9 +83,7 @@ async def generate_input(dut):
                     dut, matrix[i * 3 + 0], matrix[i * 3 + 1], matrix[i * 3 + 2]
                 )
                 await RisingEdge(dut.clk)
-                while (
-                    dut.io_inputs_0_valid.value & dut.io_inputs_0_ready.value == False
-                ):
+                while dut.io_inputs_0_valid.value & ~(dut.io_inputs_0_ready.value):
                     await RisingEdge(dut.clk)
 
             # calculate the reference outputs
@@ -122,18 +112,16 @@ async def output_check(dut):
 
             passed, dut_res = check_output_ports(dut, ref_res)
             if not passed:
-                print(
-                    "failed info: case_num:{} input size:{}".format(cases_count, size)
-                )
+                print(f"failed info: case_num:{cases_count} input size:{size}")
                 print("ref output:")
                 for element in ref_res:
                     print(hex(element))
                 print("dut output:")
                 for element in dut_res:
                     print(hex(element))
-                raise TestFailure("test case {} failed: ".format(cases_count))
+                raise TestFailure(f"test case {cases_count} failed: ")
 
-    raise TestSuccess(" pass {} test cases".format(cases_num))
+    raise TestSuccess(f" pass {cases_num} test cases")
 
 
 @cocotb.test(timeout_time=100000, timeout_unit="ns")

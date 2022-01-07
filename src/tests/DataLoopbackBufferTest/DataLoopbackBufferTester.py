@@ -172,18 +172,9 @@ async def DataLoopbackBufferTest(dut):
     dut.io_input_payload_round_index.value = 0
     dut.io_input_payload_state_size.value = 0
     dut.io_input_payload_state_id.value = 0
-    dut.io_input_payload_state_elements_0.value = 0
-    dut.io_input_payload_state_elements_1.value = 0
-    dut.io_input_payload_state_elements_2.value = 0
-    dut.io_input_payload_state_elements_3.value = 0
-    dut.io_input_payload_state_elements_4.value = 0
-    dut.io_input_payload_state_elements_5.value = 0
-    dut.io_input_payload_state_elements_6.value = 0
-    dut.io_input_payload_state_elements_7.value = 0
-    dut.io_input_payload_state_elements_8.value = 0
-    dut.io_input_payload_state_elements_9.value = 0
-    dut.io_input_payload_state_elements_10.value = 0
-    dut.io_input_payload_state_elements_11.value = 0
+
+    for j in range(12):
+        exec("dut.io_input_payload_state_elements_{}.value = 0".format(j))
 
     dut.io_outputs_0_ready.value = False
     dut.io_outputs_1_ready.value = False
