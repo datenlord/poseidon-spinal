@@ -37,7 +37,7 @@ function build_and_test()
     object="${component}Verilog"
 
     # build
-    if [[ $component != ${Components[0]} && $component != ${Components[1]} && $component != ${Components[10]} ]] 
+    if [[ $component != ${Components[0]} && $component != ${Components[1]} ]] 
     then
         echo -e "Building ${component} ... \n"
         

@@ -1,9 +1,9 @@
 import math
 import os
 
-# Poseidon Parameters
+# Poseidon Constants Parameters
 
-p = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
+P = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
 M = 128
 t_range = {3, 5, 9, 12}
 s_box_exp = 5
@@ -16,11 +16,11 @@ roundpartial = {3: 55, 5: 56, 9: 57, 12: 57}
 
 
 def add(op1, op2):
-    return (op1 + op2) % p
+    return (op1 + op2) % P
 
 
 def mul(op1, op2):
-    return (op1 * op2) % p
+    return (op1 * op2) % P
 
 
 def s_box(op1):
@@ -53,13 +53,13 @@ def init_state(preimage):
 def get_inverse(x):
     """get the modular inverse of x (mod p )"""
     """ the inverse of x equals to pow(x,p-2) mod p """
-    p_bin = bin(p - 2)[2:]
+    p_bin = bin(P - 2)[2:]
     inverse = 1
-    tmp = x % p
+    tmp = x % P
     for i in range(len(p_bin)):
         if p_bin[len(p_bin) - i - 1] == "1":
-            inverse = (inverse * tmp) % p
-        tmp = (tmp * tmp) % p
+            inverse = (inverse * tmp) % P
+        tmp = (tmp * tmp) % P
 
     return inverse
 

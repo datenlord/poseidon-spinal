@@ -34,6 +34,3 @@ def poseidon_hash(preimage):
         state = basic.mds_mixing(state)
 
     return state[1]
-
-
-print(hex(poseidon_hash([0, 1, 2, 3, 4, 5, 6, 7])))

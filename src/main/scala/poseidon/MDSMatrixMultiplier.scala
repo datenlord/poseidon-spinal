@@ -161,7 +161,7 @@ object MDSMatrixMultiplierVerilog {
     )
     SpinalConfig(
       mode = Verilog,
-      targetDirectory = "./src/main/verilog/MDSMatrixMultiplier"
+      targetDirectory = "./src/main/verilog/"
     ).generate(new MDSMatrixMultiplier(config)).printPruned()
   }
 }

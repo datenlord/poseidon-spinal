@@ -1,6 +1,12 @@
 import math
+import logging
 
-p = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
+P = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    datefmt="%Y-%m-%d  %H:%M:%S %a",
+)
 
 
 def get_gcd(a, b):
@@ -50,7 +56,7 @@ class PrimeField:
         """transform x to montgomery format"""
         return (x << self.bit_num) % self.N
 
-    def __init__(self, value, N=p):
+    def __init__(self, value, N=P):
         self.N = N
         self.bit_num = int(math.log2(N) + 1)
         self.R = pow(2, self.bit_num)
@@ -64,8 +70,6 @@ class PrimeField:
         m = t * self.N1 % self.R
         u = (op1 * op2 + m * self.N) >> self.bit_num
 
-        # print("ref intermediate_res:")
-        # print(hex(op1 * op2 + m * self.N))
         while u >= self.N:
             u -= self.N
         return u
@@ -126,11 +130,15 @@ def testmul():
     p3 = PrimeField(1234567890)
 
     p1.mulassign(p2)
-    assert p1.fromMont() == (100 * 999) % p1.N
+    assert (
+        p1.fromMont() == (100 * 999) % p1.N
+    ), "the result of p1.mulassign(p2) is wrong."
     p2.mulassign(p3)
-    assert p2.fromMont() == (999 * 1234567890) % p2.N
+    assert (
+        p2.fromMont() == (999 * 1234567890) % p2.N
+    ), "the result of p2.mulassign(p3) is wrong."
 
-    print("pass mul test!!")
+    logging.info("pass mul test!!")
 
 
 def testadd():
@@ -143,18 +151,19 @@ def testadd():
 
     p1.addassign(p2)
     p2.addassign(p3)
-    assert p1.fromMont() == (a + b) % p1.N
-    assert p2.fromMont() == (b + c) % p1.N
+    assert p1.fromMont() == (a + b) % p1.N, "the result of p1.addassign(p2) is wrong."
+    assert p2.fromMont() == (b + c) % p1.N, "the result of p2.addassign(p3) is wrong."
 
-    print("pass add test")
+    logging.info("pass add test")
 
 
 def testexp():
     a = 65439870654
     p1 = PrimeField(a)
     p1.expassign(8)
-    assert p1.fromMont() == pow(a, 8) % p1.N
+    assert p1.fromMont() == pow(a, 8) % p1.N, "the result of p1.expassign(8) is wrong."
 
-    if p1.fromMont() != pow(a, 8) % p1.N:
-        print("false")
-    print("pass exp test!!")
+    logging.debug("pass exp test!!")
+
+
+testexp()

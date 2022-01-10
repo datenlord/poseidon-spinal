@@ -65,16 +65,10 @@ def generate_constants(t, r_f, r_p):
             if bit1 == "1":
                 tmp_bits = tmp_bits + bit2
         c = int(tmp_bits, 2)
-        if c < basic.p:
+        if c < basic.P:
             RoundConstants.append(c)
 
     return RoundConstants
-
-
-# round_constants = generate_constants(9,8,57)
-
-# for i in range(0,10):
-#     print(hex(round_constants[i]))
 
 
 def output_round_constants():
