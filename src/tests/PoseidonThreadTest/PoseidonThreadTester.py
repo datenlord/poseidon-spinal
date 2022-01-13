@@ -28,8 +28,8 @@ class PoseidonThreadTester:
 
     def ref_poseidon_thread(self, round_index, state_index, state_size, state_element):
         """reference poseidon thread function"""
-        roundf = basic.roundfull
-        roundp = basic.roundpartial[state_size]
+        roundf = basic.ROUNDFULL
+        roundp = basic.ROUNDPARTIAL[state_size]
 
         round_constants_ff = poseidon_ff.transform_array(
             constants.generate_constants(state_size, roundf, roundp)

@@ -98,7 +98,7 @@ class MDSMatrixAddersTester:
                 ref_res = [0] * 12
                 for i in range(size):
                     for j in range(12):
-                        ref_res[j] = basic.add(ref_res[j], matrix[i][j])
+                        ref_res[j] = basic.PrimeFieldOps.add(ref_res[j], matrix[i][j])
 
                 self.ref_outputs.put([size, ref_res])
 

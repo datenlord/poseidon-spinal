@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 # set -o xtrace
 
-Components=("ModAdder" "ModMultiplier" "SBox5" "MDSMatrixMultiplier" "PoseidonThread" "MDSMatrixAdders" "AXI4StreamReceiver" "AXI4StreamTransmitter" "DataLoopbackBuffer" "PoseidonTopLevel" "MontMultiplier")
+Components=("ModAdder" "ModMultiplier" "SBox5" "MDSMatrixMultiplier" "PoseidonThread" "MDSMatrixAdders" "AXI4StreamReceiver" "AXI4StreamTransmitter" "DataLoopbackBuffer" "PoseidonTopLevel")
 
 # print help info
 function help()
@@ -58,6 +58,10 @@ function build_and_test()
     #docker exec -w /spinalworkspace/poseidon-new/src/tests/$testbench spinalhdl02 make
     
     rm -f ./src/tests/$testbench/*.bin
+    if [[ $component != ${Components[0]} && $component != ${Components[1]} ]] 
+    then
+        rm -f ./src/main/verilog/"${component}.v"
+    fi
 }
 
 

@@ -176,9 +176,9 @@ async def AXI4StreamReceiverTest(dut):
 
     # start testing
     tester = AXI4StreamReceiverTester(dut)
-    await tester.reset_dut(dut)
-    await cocotb.start(tester.generate_input(dut))
-    await cocotb.start(tester.check_output(dut))
+    await tester.reset_dut()
+    await cocotb.start(tester.generate_input())
+    await cocotb.start(tester.check_output())
 
     while True:
         await RisingEdge(dut.clk)

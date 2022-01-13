@@ -76,9 +76,9 @@ def output_round_constants():
 
     os.mkdir("round_constants")
     os.chdir("round_constants")
-    for t in basic.t_range:
+    for t in basic.T_RANGE:
         fileobject = open("round_constants_{}.txt".format(t), "w")
-        round_constants = generate_constants(t, basic.roundfull, basic.roundpartial[t])
+        round_constants = generate_constants(t, basic.ROUNDFULL, basic.ROUNDPARTIAL[t])
         for element in round_constants:
             fileobject.write(str(element) + "\n")
         fileobject.close()

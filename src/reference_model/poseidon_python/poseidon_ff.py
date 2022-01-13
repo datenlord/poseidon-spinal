@@ -38,7 +38,7 @@ def add_round_constants_ff(state_ff, constants_ff):
 
 def mds_mixing_ff(state_ff):
     # get mds_matrix and transform it to Primefield pattern
-    mds_matrix = basic.get_mds_matrix(len(state_ff))
+    mds_matrix = basic.PrimeFieldOps.get_mds_matrix(len(state_ff))
     mds_matrix_ff = []
 
     for element in mds_matrix:
@@ -57,17 +57,17 @@ def mds_mixing_ff(state_ff):
 def poseidon_hash(preimage):
 
     t = len(preimage) + 1
-    if t not in basic.t_range:
+    if t not in basic.T_RANGE:
         print("error: the length of preimage is incorrect")
         exit()
 
-    roundf = basic.roundfull
-    roundp = basic.roundpartial[t]
+    roundf = basic.ROUNDFULL
+    roundp = basic.ROUNDPARTIAL[t]
 
     round_constants_ff = transform_array(
         constants.generate_constants(t, roundf, roundp)
     )
-    state_ff = transform_array(basic.init_state(preimage))
+    state_ff = transform_array(basic.PrimeFieldOps.init_state(preimage))
 
     for i in range(int(roundf / 2)):
         state_ff = add_round_constants_ff(
@@ -97,12 +97,12 @@ def poseidon_hash(preimage):
 def poseidon_hash_ff(state_ff):
 
     t = len(state_ff)
-    if t not in basic.t_range:
+    if t not in basic.T_RANGE:
         print("error: the length of preimage is incorrect")
         exit()
 
-    roundf = basic.roundfull
-    roundp = basic.roundpartial[t]
+    roundf = basic.ROUNDFULL
+    roundp = basic.ROUNDPARTIAL[t]
 
     round_constants_ff = transform_array(
         constants.generate_constants(t, roundf, roundp)
@@ -137,9 +137,9 @@ def output_mds_matrix_ff():
     """get all mds_matrix in Montgomery domain and write to files"""
     os.mkdir("mds_matrixs_ff")
     os.chdir("mds_matrixs_ff")
-    for t in basic.t_range:
+    for t in basic.T_RANGE:
         # get mds matrix and transform to Montgomery domain
-        mds_matrix = basic.get_mds_matrix(t)
+        mds_matrix = basic.PrimeFieldOps.get_mds_matrix(t)
         mds_matrix_ff = []
         for element in mds_matrix:
             mds_matrix_ff.append(transform_array(element))
@@ -157,10 +157,10 @@ def output_round_constants_ff():
     """get all round constants in Montgomery domain and write to files"""
     os.mkdir("round_constants_ff")
     os.chdir("round_constants_ff")
-    for t in basic.t_range:
+    for t in basic.T_RANGE:
         fileobject = open("round_constants_ff_{}.txt".format(t), "w")
         round_constants = transform_array(
-            constants.generate_constants(t, basic.roundfull, basic.roundpartial[t])
+            constants.generate_constants(t, basic.ROUNDFULL, basic.ROUNDPARTIAL[t])
         )
         for element in round_constants:
             fileobject.write(str(element.value) + "\n")
