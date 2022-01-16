@@ -2,7 +2,7 @@
 
 set -o errexit
 set -o nounset
-# set -o xtrace
+set -o xtrace
 
 Components=("ModAdder" "ModMultiplier" "SBox5" "MDSMatrixMultiplier" "PoseidonThread" "MDSMatrixAdders" "AXI4StreamReceiver" "AXI4StreamTransmitter" "DataLoopbackBuffer" "PoseidonTopLevel")
 
