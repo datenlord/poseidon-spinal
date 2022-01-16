@@ -7,8 +7,8 @@ val spinalVersion = "1.6.0"
 object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
   def scalaVersion = "2.13.6"
 
-    override def scalacOptions = Seq(
-      //"-V", // Print a synopsis of verbose options.
+  override def scalacOptions = Seq(
+    //"-V", // Print a synopsis of verbose options.
     //"-W", // Print a synopsis of warning options.
     //"-X", // Print a synopsis of advanced options.
     //"-Y", // Print a synopsis of private options.
@@ -76,8 +76,6 @@ object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
     "-Xlint:unit-special",            // Warn for specialization of Unit in parameter position.
     "-Xlint:multiarg-infix",          // Infix operator was defined or used with multiarg operand.
     "-Xlint:implicit-recursion",      // Implicit resolves to an enclosing definition.
-
-
   )
 
   override def millSourcePath = os.pwd
