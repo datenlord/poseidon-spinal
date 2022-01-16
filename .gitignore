@@ -1,0 +1,51 @@
+*.class
+*.log
+*.bak
+*.xml
+
+# python
+__pycache__
+sim_build
+
+# sbt specific
+.cache/
+.history/
+.lib/
+dist/*
+target
+lib_managed/
+src_managed/
+project
+project/boot/
+project/plugins/project/
+
+# Scala-IDE specific
+.scala_dependencies
+.worksheet
+
+.idea
+out
+
+# Metals
+.metals
+
+# Eclipse
+bin/
+.classpath
+.project
+.settings
+.cache-main
+.vscode
+
+#User
+/*.vhd
+/*.v
+*.cf
+*.json
+*.vcd
+!tester/src/test/resources/*.vhd
+
+
+simWorkspace/
+tmp/
+null
