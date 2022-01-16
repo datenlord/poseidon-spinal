@@ -222,13 +222,21 @@ class AXI4StreamTransmitter(g: PoseidonGenerics, buffer_depth: Int)
   }
   val input_demux = Vec(Stream(TransmitterContext(g)), buffer_depth)
   val demux_select = OHToUInt(OHMasking.first(input_demux.map(_.ready)))
-  (input_demux, StreamDemux(io.input, demux_select, buffer_depth)).zipped
+
+  input_demux
+    .lazyZip(StreamDemux(io.input, demux_select, buffer_depth))
     .foreach(_ << _)
+  // (input_demux, StreamDemux(io.input, demux_select, buffer_depth)).zipped
+  //   .foreach(_ << _)
 
   val buffer = input_demux.map(_.stage())
   val select = OHToUInt(
-    (buffer.map(_.valid), buffer.map(_.state_id)).zipped
+    buffer
+      .map(_.valid)
+      .lazyZip(buffer.map(_.state_id))
       .map(_ & _ === idCounter)
+    // (buffer.map(_.valid), buffer.map(_.state_id)).zipped
+    //   .map(_ & _ === idCounter)
   )
   val buffer_out = StreamMux(select, buffer)
 

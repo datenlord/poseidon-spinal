@@ -97,7 +97,7 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
       OHMasking.first(SBox5Insts.map(_.io.input.ready))
     )
     val SBox5InstsInputs = StreamDemux(demux_input, DemuxSelect, SBoxNum)
-    (SBox5Insts.map(_.io.input), SBox5InstsInputs).zipped.foreach(_ << _)
+    (SBox5Insts.map(_.io.input) lazyZip SBox5InstsInputs).foreach(_ << _)
 
     val select_fifo =
       fifo_input.translateWith(DemuxSelect).queueLowLatency(size = 20)
@@ -119,7 +119,7 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
       OHMasking.first(matrixMultiplierInsts.map(_.io.input.ready))
     )
     val MultiplierInputs = StreamDemux(demux_input, DemuxSelect, MultiplierNum)
-    (matrixMultiplierInsts.map(_.io.input), MultiplierInputs).zipped
+    (matrixMultiplierInsts.map(_.io.input) lazyZip MultiplierInputs)
       .foreach(_ << _)
 
     val select_fifo =

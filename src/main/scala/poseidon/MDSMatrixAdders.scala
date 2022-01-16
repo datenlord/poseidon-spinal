@@ -22,7 +22,7 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
 
   def ModAdderVec(op1s: Vec[UInt], op2s: Vec[UInt], result: Vec[UInt]) =
     new Area {
-      for ((op1, op2, res) <- (op1s, op2s, result).zipped) {
+      for ((op1, op2, res) <- (op1s lazyZip op2s lazyZip result)) {
         val adder = ModAdder()
         adder.io.op1_i := op1
         adder.io.op2_i := op2

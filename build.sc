@@ -5,10 +5,10 @@ import mill._, scalalib._, scalafmt._
 val spinalVersion = "1.6.0"
 
 object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
-  def scalaVersion = "2.12.14"
+  def scalaVersion = "2.13.6"
 
     override def scalacOptions = Seq(
-    //"-V", // Print a synopsis of verbose options.
+      //"-V", // Print a synopsis of verbose options.
     //"-W", // Print a synopsis of warning options.
     //"-X", // Print a synopsis of advanced options.
     //"-Y", // Print a synopsis of private options.
@@ -32,21 +32,21 @@ object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
 
     "-Wconf:any:warning-verbose",     // Configure reporting of compiler warnings; use `help` for details.
     //"-Wdead-code",                    // Warn when dead code is identified. [false]
-    //"-Werror",                        // Fail the compilation if there are any warnings. [false]
-    //"-Wextra-implicit",               // Warn when more than one implicit parameter section is defined. [false]
-    //"-Wmacros:both",                  // Inspect both user-written code and expanded trees when generating unused symbol warnings.
-    //"-Wnumeric-widen",                // Warn when numerics are widened. [false]
-    //"-Woctal-literal",                // Warn on obsolete octal syntax. [false]
-    // "-Wunused:imports",               // Warn if an import selector is not referenced.
-    // "-Wunused:patvars",               // Warn if a variable bound in a pattern is unused.
-    // "-Wunused:privates",              // Warn if a private member is unused.
-    // "-Wunused:locals",                // Warn if a local definition is unused.
-    // "-Wunused:explicits",             // Warn if an explicit parameter is unused.
-    // "-Wunused:implicits",             // Warn if an implicit parameter is unused.
-    // "-Wunused:synthetics",            // Warn if a synthetic implicit parameter (context bound) is unused.
-    // "-Wunused:nowarn",                // Warn if a @nowarn annotation does not suppress any warnings.
-    // "-Wunused:params",                // Enable -Wunused:explicits,implicits,synthetics.
-    // "-Wunused:linted",                // -Xlint:unused.
+    "-Werror",                        // Fail the compilation if there are any warnings. [false]
+    "-Wextra-implicit",               // Warn when more than one implicit parameter section is defined. [false]
+    "-Wmacros:both",                  // Inspect both user-written code and expanded trees when generating unused symbol warnings.
+    "-Wnumeric-widen",                // Warn when numerics are widened. [false]
+    "-Woctal-literal",                // Warn on obsolete octal syntax. [false]
+    "-Wunused:imports",               // Warn if an import selector is not referenced.
+    "-Wunused:patvars",               // Warn if a variable bound in a pattern is unused.
+    "-Wunused:privates",              // Warn if a private member is unused.
+    "-Wunused:locals",                // Warn if a local definition is unused.
+    "-Wunused:explicits",             // Warn if an explicit parameter is unused.
+    "-Wunused:implicits",             // Warn if an implicit parameter is unused.
+    "-Wunused:synthetics",            // Warn if a synthetic implicit parameter (context bound) is unused.
+    "-Wunused:nowarn",                // Warn if a @nowarn annotation does not suppress any warnings.
+    "-Wunused:params",                // Enable -Wunused:explicits,implicits,synthetics.
+    "-Wunused:linted",                // -Xlint:unused.
     //"-Wvalue-discard",                // Warn when non-Unit expression results are unused. [false]
     "-Xlint:adapted-args",            // An argument list was modified to match the receiver.
     "-Xlint:nullary-unit",            // `def f: Unit` looks like an accessor; add parens to look side-effecting.
@@ -61,21 +61,22 @@ object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
     "-Xlint:delayedinit-select",      // Selecting member of DelayedInit.
     "-Xlint:package-object-classes",  // Class or object defined in package object.
     "-Xlint:stars-align",             // In a pattern, a sequence wildcard `_*` should match all of a repeated parameter.
-    //"-Xlint:strict-unsealed-patmat",  // Pattern match on an unsealed class without a catch-all.
+    "-Xlint:strict-unsealed-patmat",  // Pattern match on an unsealed class without a catch-all.
     "-Xlint:constant",                // Evaluation of a constant arithmetic expression resulted in an error.
     "-Xlint:unused",                  // Enable -Wunused:imports,privates,locals,implicits,nowarn.
-    //"-Xlint:nonlocal-return",         // A return statement used an exception for flow control.
-    //"-Xlint:implicit-not-found",      // Check @implicitNotFound and @implicitAmbiguous messages.
-    //"-Xlint:serial",                  // @SerialVersionUID on traits and non-serializable classes.
-    //"-Xlint:valpattern",              // Enable pattern checks in val definitions.
-    //"-Xlint:eta-zero",                // Usage `f` of parameterless `def f()` resulted in eta-expansion, not empty application `f()`.
-    //"-Xlint:eta-sam",                 // The Java-defined target interface for eta-expansion was not annotated @FunctionalInterface.
+    "-Xlint:nonlocal-return",         // A return statement used an exception for flow control.
+    "-Xlint:implicit-not-found",      // Check @implicitNotFound and @implicitAmbiguous messages.
+    "-Xlint:serial",                  // @SerialVersionUID on traits and non-serializable classes.
+    "-Xlint:valpattern",              // Enable pattern checks in val definitions.
+    "-Xlint:eta-zero",                // Usage `f` of parameterless `def f()` resulted in eta-expansion, not empty application `f()`.
+    "-Xlint:eta-sam",                 // The Java-defined target interface for eta-expansion was not annotated @FunctionalInterface.
     "-Xlint:deprecation",             // Enable -deprecation and also check @deprecated annotations.
-    //"-Xlint:byname-implicit",         // Block adapted by implicit with by-name parameter.
-    //"-Xlint:recurse-with-default",    // Recursive call used default argument.
-    //"-Xlint:unit-special",            // Warn for specialization of Unit in parameter position.
-    //"-Xlint:multiarg-infix",          // Infix operator was defined or used with multiarg operand.
-    //"-Xlint:implicit-recursion",      // Implicit resolves to an enclosing definition.
+    "-Xlint:byname-implicit",         // Block adapted by implicit with by-name parameter.
+    "-Xlint:recurse-with-default",    // Recursive call used default argument.
+    "-Xlint:unit-special",            // Warn for specialization of Unit in parameter position.
+    "-Xlint:multiarg-infix",          // Infix operator was defined or used with multiarg operand.
+    "-Xlint:implicit-recursion",      // Implicit resolves to an enclosing definition.
+
 
   )
 

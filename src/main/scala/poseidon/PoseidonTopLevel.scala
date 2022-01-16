@@ -81,8 +81,8 @@ class DataLoopbackBuffer(g: PoseidonGenerics) extends Component {
   }
 
   val buffers = Vec(Vec(Stream(new Context(g)), g.thread_num), 4)
-  (buffers(0), buffer3).zipped.foreach(_ <-< _)
-  for (i <- 1 until 4) (buffers(i), buffers(i - 1)).zipped.foreach(_ <-< _)
+  (buffers(0) lazyZip buffer3).foreach(_ <-< _)
+  for (i <- 1 until 4) (buffers(i) lazyZip buffers(i - 1)).foreach(_ <-< _)
 
   io.residue := g.t_max
   when(buffers(0).map(_.valid).andR) {
@@ -98,7 +98,7 @@ class DataLoopbackBuffer(g: PoseidonGenerics) extends Component {
     io.residue := 0
   }
 
-  (io.outputs, buffers(3)).zipped.foreach(_ << _)
+  (io.outputs lazyZip buffers(3)).foreach(_ << _)
 }
 
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
@@ -114,7 +114,7 @@ class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
 
     val inputs0 = Vec(Stream(new Context(config)), config.thread_num)
     val inputs1_temp = Vec(Stream(new Context(config)), config.thread_num)
-    (inputs1_temp, receiver.io.outputs).zipped.foreach(_ <-/< _)
+    (inputs1_temp lazyZip receiver.io.outputs).foreach(_ <-/< _)
     val residue = UInt(log2Up(config.t_max) bits)
     val inputs1 = inputs1_temp.map(
       _.continueWhen(
@@ -184,7 +184,7 @@ class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
 
   val loopbackBuffer = new DataLoopbackBuffer(config)
   loopbackBuffer.io.input << DataDeMux.output1
-  (DataMux.inputs0, loopbackBuffer.io.outputs).zipped.foreach(_ << _)
+  (DataMux.inputs0 lazyZip loopbackBuffer.io.outputs).foreach(_ << _)
   DataMux.residue := loopbackBuffer.io.residue
 
   val transmitter = new AXI4StreamTransmitter(config, buffer_depth = 6)
