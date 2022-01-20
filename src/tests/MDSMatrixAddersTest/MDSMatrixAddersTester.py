@@ -7,7 +7,7 @@ from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import basic
 
-CASES_NUM = 2000  # the number of test cases
+CASES_NUM = 500  # the number of test cases
 
 
 class MDSMatrixAddersTester:
@@ -26,7 +26,6 @@ class MDSMatrixAddersTester:
         dut.reset.value = 0
 
     def get_random_input(self):
-        rand_valid = random.random() > 0.3
         size_range = [3, 5, 9, 12]
         rand_size = size_range[random.randint(0, 3)]
         rand_matrix = []
@@ -41,15 +40,15 @@ class MDSMatrixAddersTester:
             rand_matrix.append(rand_vec)
 
         if rand_size == 5:
+            rand_size = rand_size + 1
             rand_matrix.append(12 * [0])
-        return rand_valid, rand_size, rand_matrix
+        return rand_size, rand_matrix
 
-    def set_input_ports(self, values0, values1, values2):
-        for i in range(3):
-            for j in range(12):
-                exec(
-                    f"self.dut.io_inputs_{i}_payload_state_elements_{j}.value = values{i}[{j}]"
-                )
+    def set_input_ports(self, values):
+        for j in range(12):
+            exec(
+                f"self.dut.io_input_payload_state_elements_{j}.value = values[{j}]"
+            )
 
     def check_output_ports(self, ref_res):
         dut_res = []
@@ -66,41 +65,34 @@ class MDSMatrixAddersTester:
 
     async def generate_input(self):
         """generate input signals"""
+
         dut = self.dut
         cases_count = 0
         while cases_count < CASES_NUM:
             # get random values
-            valid, size, matrix = self.get_random_input()
-            # assign random values to dut input ports
-            dut.io_inputs_0_valid.value = valid
-            dut.io_inputs_1_valid.value = valid
-            dut.io_inputs_2_valid.value = valid
-            dut.io_inputs_0_payload_state_size.value = size
-            dut.io_inputs_1_payload_state_size.value = size
-            dut.io_inputs_2_payload_state_size.value = size
+            size, matrix = self.get_random_input()
 
-            if valid == False:
+            for i in range(size):
+                dut.io_input_valid.value = random.random() > 0.2
+                dut.io_input_payload_state_size.value = size
+                self.set_input_ports(matrix[i])
+
                 await RisingEdge(dut.clk)
-
-            if valid == True:
-                cases_count += 1
-                for i in range(ceil(size / 3)):
-                    self.set_input_ports(
-                        matrix[i * 3 + 0], matrix[i * 3 + 1], matrix[i * 3 + 2]
-                    )
+                while((dut.io_input_valid.value & dut.io_input_ready.value)==False):
+                    dut.io_input_valid.value = random.random() > 0.2
                     await RisingEdge(dut.clk)
-                    while dut.io_inputs_0_valid.value & (
-                        dut.io_inputs_0_ready.value == False
-                    ):
-                        await RisingEdge(dut.clk)
 
-                # calculate the reference outputs
-                ref_res = [0] * 12
-                for i in range(size):
-                    for j in range(12):
-                        ref_res[j] = basic.PrimeFieldOps.add(ref_res[j], matrix[i][j])
+            # calculate and push the reference outputs
+            ref_res = [0] * 12
+            for i in range(size):
+                for j in range(12):
+                    ref_res[j] = basic.PrimeFieldOps.add(ref_res[j], matrix[i][j])
 
-                self.ref_outputs.put([size, ref_res])
+            self.ref_outputs.put([size, ref_res])
+            
+            cases_count += 1
+        
+        dut.io_input_valid.value = False
 
     async def output_check(self):
         """check output signals"""
@@ -110,7 +102,7 @@ class MDSMatrixAddersTester:
         while cases_count < CASES_NUM:
             await RisingEdge(dut.clk)
             # get random ready signals
-            ready = random.random() > 0.4
+            ready = random.random() > 0.3
             dut.io_output_ready.value = ready
 
             if (dut.io_output_ready.value & dut.io_output_valid.value) == True:
@@ -136,22 +128,14 @@ class MDSMatrixAddersTester:
 async def MDSMatrixAddersTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
-    # set default values to all dut input ports
     tester = MDSMatrixAddersTester(dut)
-    tester.set_input_ports([0] * 12, [0] * 12, [0] * 12)
 
-    dut.io_inputs_0_valid.value = False
-    dut.io_inputs_0_payload_state_id.value = 0
-    dut.io_inputs_0_payload_round_index.value = 0
-
-    dut.io_inputs_1_valid.value = False
-    dut.io_inputs_1_payload_state_id.value = 0
-    dut.io_inputs_1_payload_round_index.value = 0
-
-    dut.io_inputs_2_valid.value = False
-    dut.io_inputs_2_payload_state_id.value = 0
-    dut.io_inputs_2_payload_round_index.value = 0
-
+    # set default values to all dut input ports
+    tester.set_input_ports([0] * 12)
+    dut.io_input_valid.value = False
+    dut.io_input_payload_round_index.value = 0
+    dut.io_input_payload_state_size.value = 0
+    dut.io_input_payload_state_id.value = 0
     dut.io_output_ready.value = False
 
     # start testing
@@ -161,3 +145,5 @@ async def MDSMatrixAddersTest(dut):
 
     while True:
         await RisingEdge(dut.clk)
+
+

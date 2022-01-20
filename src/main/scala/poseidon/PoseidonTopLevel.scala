@@ -40,6 +40,7 @@ class BasicContext(g: PoseidonGenerics) extends Bundle {
   val state_size = UInt(log2Up(g.t_max) bits)
   val state_id = UInt(g.id_width bits)
 }
+
 class Context(g: PoseidonGenerics) extends BasicContext(g) {
   val state_element = UInt(g.data_width bits)
 }
@@ -136,10 +137,15 @@ class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
     val output = Stream(MDSContext(config))
     val matrixAdder = new MDSMatrixAdders(config)
     matrixAdder.io.output >> output
+
+    val threadOutputs = Vec(Stream(MDSContext(config)), config.thread_num)
+    val threadJoined = StreamJoin(threadOutputs).translateWith(threadOutputs(0))
+    matrixAdder.io.input << threadJoined
+
     for (i <- 0 until config.thread_num) {
       val thread = new PoseidonThread(config)
       thread.io.input << inputs(i)
-      thread.io.output >> matrixAdder.io.inputs(i)
+      thread.io.output >> threadOutputs(i)
     }
   }
 

@@ -7,7 +7,7 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff
 
-CASES_NUM = 2000
+CASES_NUM = 500
 
 
 class MDSMatrixMultiplierTester:

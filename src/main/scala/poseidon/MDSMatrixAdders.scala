@@ -14,115 +14,87 @@ object MDSContextInitValue {
   }
 }
 
-class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
-  val io = new Bundle {
-    val inputs = Vec(slave Stream (MDSContext(g)), 3)
-    val output = master Stream (MDSContext(g))
+class MDSMatrixAdders(g:PoseidonGenerics) extends Component{
+
+  val io = new Bundle{
+    val input  = slave  Stream(MDSContext(g))
+    val output = master Stream(MDSContext(g))
   }
 
-  def ModAdderVec(op1s: Vec[UInt], op2s: Vec[UInt], result: Vec[UInt]) =
-    new Area {
-      for ((op1, op2, res) <- (op1s lazyZip op2s lazyZip result)) {
-        val adder = ModAdder()
-        adder.io.op1_i := op1
-        adder.io.op2_i := op2
-        res := adder.io.res_o
+
+  def ModAdderVec(op1s:Vec[UInt],op2s:Vec[UInt],results:Vec[UInt]) = new Area{
+    for ((op1,op2,res) <- (op1s lazyZip op2s lazyZip results)){
+      val adder = ModAdder()
+      adder.io.op1_i := op1
+      adder.io.op2_i := op2
+      res := adder.io.res_o
+    }
+  }
+
+  object AccumulatorState extends SpinalEnum{
+    val IDLE, ADDING, DONE = newElement()
+  }
+
+  // registers holding intermediate results
+  val tempRes = Reg(MDSContext(g))
+  tempRes.state_size init(0)
+  tempRes.state_elements.foreach(_ init(0))
+  tempRes.state_id init(0)
+  tempRes.round_index init(0)
+  val modAdderRes = cloneOf(MDSContext(g).state_elements)
+  val modAdderVec = ModAdderVec(tempRes.state_elements,io.input.state_elements,modAdderRes)
+
+  // implement the state machine logic
+  val fsm = new StateMachine{
+
+    val counter = Reg(UInt(log2Up(g.t_max) bits)) init(0)
+    io.output.payload.assignSomeByName(tempRes)
+    io.output.valid := False
+    io.input.ready := False
+
+    val IDLE:State = new State with EntryPoint{
+      whenIsActive{
+        io.input.ready := True
+        when(io.input.fire){
+          tempRes.assignSomeByName(io.input.payload)
+          goto(ADDING)
+          counter := counter + 1
+        }
       }
     }
 
-  val threadAdders = new Area {
-    val inputs = io.inputs
-    val tempRes = Stream(MDSContext(g))
-    tempRes.arbitrationFrom(StreamJoin(inputs))
-    tempRes.payload.assignSomeByName(inputs(0).payload)
-    tempRes.state_elements.allowOverride
-    val modAdderVec1 = ModAdderVec(
-      inputs(0).state_elements,
-      inputs(1).state_elements,
-      tempRes.state_elements
-    )
-
-    val tempOp1s = tempRes.stage()
-    val tempOp2s = RegNextWhen(inputs(2).state_elements, tempRes.fire)
-    tempOp2s.foreach(_ init (0))
-
-    val output = Stream(MDSContext(g))
-    output.arbitrationFrom(tempOp1s)
-    output.payload.assignSomeByName(tempOp1s.payload)
-    output.state_elements.allowOverride
-    val modAdderVec2 =
-      ModAdderVec(tempOp1s.state_elements, tempOp2s, output.state_elements)
-  }
-
-  val threadAccumulator = new Area {
-    val input = threadAdders.output.stage()
-    val output = Stream(MDSContext(g))
-
-    val tempRes = Reg(MDSContext(g))
-    tempRes.state_size init (0)
-    tempRes.state_elements.foreach(_ init (0))
-    tempRes.state_id init (0)
-    tempRes.round_index init (0)
-    val modAdderRes = cloneOf(MDSContext(g).state_elements)
-    val modAdderVec =
-      ModAdderVec(tempRes.state_elements, input.state_elements, modAdderRes)
-
-    val fsm = new StateMachine {
-      val counter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
-      output.payload.assignSomeByName(tempRes)
-      output.valid := False
-      input.ready := False
-
-      val IDLE: State = new State with EntryPoint {
-        whenIsActive {
-          input.ready := True
-          when(input.fire) {
-            tempRes.assignSomeByName(input.payload)
-            when(input.state_size === 3) {
-              goto(DONE)
-            } otherwise {
-              goto(ADDING)
-              counter := counter + 3
-            }
+    val ADDING:State = new State{
+      whenIsActive{
+        io.input.ready := True
+        when(io.input.fire){
+          tempRes.state_elements.assignFrom(modAdderRes)
+          when(counter + 1 >= tempRes.state_size){
+            goto(DONE)
+          }otherwise{
+            counter := counter + 1
           }
         }
       }
+      onExit(counter := 0)
+    }
 
-      val ADDING: State = new State {
-        whenIsActive {
-          input.ready := True
-          when(input.fire) {
-            tempRes.state_elements.assignFrom(modAdderRes)
-            when(counter + 3 >= tempRes.state_size) {
-              goto(DONE)
-            } otherwise {
-              counter := counter + 3
-            }
-          }
-        }
-        onExit(counter := 0)
-      }
 
-      val DONE: State = new State {
-        whenIsActive {
-          output.valid := True
-          when(output.fire) {
-            input.ready := True
-            when(input.fire) {
-              tempRes.assignSomeByName(input.payload)
-              when(input.state_size > 3) {
-                goto(ADDING)
-                counter := counter + 3
-              }
-            } otherwise {
-              goto(IDLE)
-            }
+    val DONE:State = new State{
+      whenIsActive{
+        io.output.valid := True
+        when(io.output.fire){
+          io.input.ready := True
+          when(io.input.fire){
+            tempRes.assignSomeByName(io.input.payload)
+            goto(ADDING)
+            counter := counter + 1
+          }otherwise{
+            goto(IDLE)
           }
         }
       }
     }
   }
-  io.output << threadAccumulator.output
 }
 
 object MDSMatrixAddersVerilog {

@@ -11,6 +11,8 @@ export PYTHONPATH := $(PWD)/../../reference_model/poseidon_python:$(PYTHONPATH)
 VERILOG_SOURCES += ../../main/verilog/MDSMatrixMultiplier.v
 VERILOG_SOURCES += ../../main/verilog/ModAdder.v
 VERILOG_SOURCES += ../../main/verilog/ModMultiplier.v
+VERILOG_SOURCES += ../../main/verilog/MontMultiplierBasics.v
+
 
 
 
