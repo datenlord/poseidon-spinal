@@ -5,6 +5,7 @@ from cocotb.result import TestSuccess
 from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import finite_field as ff
+from cocotb_test import simulator
 
 CASES_NUM = 500  # the number of test cases
 
@@ -90,3 +91,16 @@ async def ModMultiplierTest(dut):
 
     while True:
         await RisingEdge(dut.clk)
+
+
+# pytest
+def test_MontMultiplierPiped():
+    simulator.run(
+        verilog_sources=[
+            "../main/verilog/MontMultiplierPiped.v",
+            "../main/verilog/MontMultiplierBasics.v",
+        ],
+        toplevel="MontMultiplierPiped",
+        module="MontMultiplierPipedTester",
+        python_search="./src/reference_model/",
+    )

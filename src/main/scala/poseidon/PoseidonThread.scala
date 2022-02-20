@@ -1,13 +1,13 @@
 package poseidon
 
 import spinal.core._
-import spinal.lib._ 
+import spinal.lib._
 
-case class BasicContextCase(g:PoseidonGenerics) extends BasicContext(g){}
-case class ContextCase(g:PoseidonGenerics) extends Context(g){}
+case class BasicContextCase(g: PoseidonGenerics) extends BasicContext(g) {}
+case class ContextCase(g: PoseidonGenerics) extends Context(g) {}
 
-object PoseidonThread{
-  def apply(g:PoseidonGenerics, input:Stream[Context]):Stream[MDSContext]={
+object PoseidonThread {
+  def apply(g: PoseidonGenerics, input: Stream[Context]): Stream[MDSContext] = {
     val threadInst = new PoseidonThread(g)
     threadInst.io.input << input
     threadInst.io.output
@@ -15,18 +15,24 @@ object PoseidonThread{
 }
 
 class PoseidonThread(g: PoseidonGenerics) extends Component {
-  
-  val io = new Bundle{
-    val input = slave Stream(new Context(g))
-    val output = master Stream(MDSContext(g))
+
+  val io = new Bundle {
+    val input = slave Stream (new Context(g))
+    val output = master Stream (MDSContext(g))
   }
 
   // define the configuration class of Montgomery multiplier
-  val modulus = BigInt("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", radix = 16)
-  val compensation = BigInt("c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff", radix = 16)
-  val mulConfig = MontMultiplierConfig(modulus,compensation,255)
+  val modulus = BigInt(
+    "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
+    radix = 16
+  )
+  val compensation = BigInt(
+    "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
+    radix = 16
+  )
+  val mulConfig = MontMultiplierConfig(modulus, compensation, 255)
 
-  val AddRoundConstantStage = new Area{
+  val AddRoundConstantStage = new Area {
     val input = io.input
     val output = Stream(new Context(g))
 
@@ -53,24 +59,24 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     // ModAdder Instance
     val modAdder = ModAdder()
     modAdder.io.op1_i := input.state_element
-    switch(input.state_size){
+    switch(input.state_size) {
       is(3) {
         modAdder.io.op2_i := roundConstants_t3.io.readPorts(0).data
       }
-      is(5){
-        when(input.state_index === 5){
+      is(5) {
+        when(input.state_index === 5) {
           modAdder.io.op2_i := 0
-        }otherwise{
+        } otherwise {
           modAdder.io.op2_i := roundConstants_t5.io.readPorts(0).data
         }
       }
-      is(9){
+      is(9) {
         modAdder.io.op2_i := roundConstants_t9.io.readPorts(0).data
       }
-      is(12){
+      is(12) {
         modAdder.io.op2_i := roundConstants_t12.io.readPorts(0).data
       }
-      default{ modAdder.io.op2_i := 0 }
+      default { modAdder.io.op2_i := 0 }
     }
 
     output.arbitrationFrom(input)
@@ -84,44 +90,44 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
 
     val input = AddRoundConstantStage.output.s2mPipe().m2sPipe()
     val inputForked = StreamFork(input, 2, true)
-    
+
     // the first Montgomery Multiplier
-    val mulInput0 = inputForked(0).translateWith{
+    val mulInput0 = inputForked(0).translateWith {
       val payload = operands(g.data_width)
       payload.op1 := input.state_element
       payload.op2 := input.state_element
       payload
     }
 
-    val mulRes0 = 
-      if(g.isSim){
+    val mulRes0 =
+      if (g.isSim) {
         MontMultiplierPipedSim(mulConfig, mulInput0)
-      }else{
+      } else {
         MontMultiplierPiped(mulConfig, mulInput0)
       }
 
     // the second Montgomery Multiplier
-    val mulInput1 = mulRes0.translateWith{
+    val mulInput1 = mulRes0.translateWith {
       val payload = operands(g.data_width)
       payload.op1 := mulRes0.res
       payload.op2 := mulRes0.res
       payload
     }
 
-    val mulRes1 = 
-      if(g.isSim){
+    val mulRes1 =
+      if (g.isSim) {
         MontMultiplierPipedSim(mulConfig, mulInput1)
-      }else{
+      } else {
         MontMultiplierPiped(mulConfig, mulInput1)
       }
 
     val tempContext1 = inputForked(1).queue(10)
 
-    val tempOutput = StreamJoin(mulRes1,tempContext1)
+    val tempOutput = StreamJoin(mulRes1, tempContext1)
 
     // the third Montgomery Multiplier
     val tempOutputForked = StreamFork(tempOutput, 2, true)
-    val mulInput2 = tempOutputForked(0).translateWith{
+    val mulInput2 = tempOutputForked(0).translateWith {
       val payload = operands(g.data_width)
       payload.op1 := tempOutput.payload._1.res
       payload.op2 := tempOutput.payload._2.state_element
@@ -130,20 +136,20 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
 
     // when the code is used for simulation
     // MontMultiplierPipedSim is implemented for faster simulation
-    val mulRes2 = 
-      if(g.isSim){
+    val mulRes2 =
+      if (g.isSim) {
         MontMultiplierPipedSim(mulConfig, mulInput2)
-      } 
-      else {
+      } else {
         MontMultiplierPiped(mulConfig, mulInput2)
       }
 
-
-    val tempContext2 = tempOutputForked(1).translateWith{
-      val payload = ContextCase(g)
-      payload.assignSomeByName(tempOutputForked(1)._2)
-      payload
-    }.queue(6)
+    val tempContext2 = tempOutputForked(1)
+      .translateWith {
+        val payload = ContextCase(g)
+        payload.assignSomeByName(tempOutputForked(1)._2)
+        payload
+      }
+      .queue(6)
 
     // decide whether SBox5 is bypassed
     val partialRound = False
@@ -163,21 +169,26 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     }
     val bypassSBox5 = (partialRound) && (tempContext2.state_index =/= 0)
 
-    val output = StreamJoin.arg(mulRes2, tempContext2).translateWith{
+    val output = StreamJoin.arg(mulRes2, tempContext2).translateWith {
       val payload = new ContextCase(g)
       payload.assignSomeByName(tempContext2.payload)
       payload.state_element.allowOverride
-      payload.state_element := Mux(bypassSBox5, tempContext2.state_element, mulRes2.res)
+      payload.state_element := Mux(
+        bypassSBox5,
+        tempContext2.state_element,
+        mulRes2.res
+      )
       payload
     }
   }
 
   // MDS Mixing
   // MDS Multiplication
-  val mdsMulOutput = MDSMatrixMultiplier(g, mulConfig, SBox5Stage.output.stage())
+  val mdsMulOutput =
+    MDSMatrixMultiplier(g, mulConfig, SBox5Stage.output.stage())
   // MDS Addition
   io.output << MDSMatrixAdders(g, mdsMulOutput)
-  
+
 }
 
 object PoseidonThreadVerilog {

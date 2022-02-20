@@ -30,7 +30,7 @@ ifeq ($(DUT), PoseidonThread)
 		VERILOG_SOURCES += ../main/verilog/ModMultiplier.v
 endif
 
-ifeq ($(DUT), PoseidonToplevel)
+ifeq ($(DUT), PoseidonTopLevel)
 		VERILOG_SOURCES += ../main/verilog/ModAdder.v
 		VERILOG_SOURCES += ../main/verilog/MontMultiplierBasics.v
 		VERILOG_SOURCES += ../main/verilog/ModMultiplier.v

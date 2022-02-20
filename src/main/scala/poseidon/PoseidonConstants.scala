@@ -21,8 +21,8 @@ object get_matrix_from_file {
   }
 }
 
-object MDSMatrix{
-  def apply(t:Int, dataWidth:Int, address:UInt):Vec[UInt]={
+object MDSMatrix {
+  def apply(t: Int, dataWidth: Int, address: UInt): Vec[UInt] = {
     val matrixInst = MDSMatrix(t, dataWidth)
     matrixInst.io.addressPort := address
     matrixInst.io.dataPorts
@@ -59,8 +59,7 @@ case class RoundConstantsConfig(
     dataWidth: Int
 )
 
-case class ReadPort(tMax: Int, roundMax: Int, dataWidth: Int)
-    extends Bundle {
+case class ReadPort(tMax: Int, roundMax: Int, dataWidth: Int) extends Bundle {
   val data = out UInt (dataWidth bits)
   val tIndex = in UInt (log2Up(tMax) bits)
   val roundIndex = in UInt (log2Up(roundMax) bits)
@@ -89,34 +88,37 @@ case class RoundConstants(config: RoundConstantsConfig) extends Component {
   }
 }
 
-object RoundConstantsT3{
-  def apply():RoundConstants={
-    val config = RoundConstantsConfig(t = 3,roundNum = 63,portsNum = 1,dataWidth = 255)
+object RoundConstantsT3 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 3, roundNum = 63, portsNum = 1, dataWidth = 255)
     RoundConstants(config)
   }
 }
 
-object RoundConstantsT5{
-  def apply():RoundConstants={
-    val config = RoundConstantsConfig(t = 5,roundNum = 64,portsNum = 1,dataWidth = 255)
+object RoundConstantsT5 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 5, roundNum = 64, portsNum = 1, dataWidth = 255)
     RoundConstants(config)
   }
 }
 
-object RoundConstantsT9{
-  def apply():RoundConstants={
-    val config = RoundConstantsConfig(t = 9,roundNum = 65,portsNum = 1,dataWidth = 255)
+object RoundConstantsT9 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 9, roundNum = 65, portsNum = 1, dataWidth = 255)
     RoundConstants(config)
   }
 }
 
-object RoundConstantsT12{
-  def apply():RoundConstants={
-    val config = RoundConstantsConfig(t = 12,roundNum = 65,portsNum = 1,dataWidth = 255)
+object RoundConstantsT12 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 12, roundNum = 65, portsNum = 1, dataWidth = 255)
     RoundConstants(config)
   }
 }
-
 
 object MDSMatrixVerilog {
   def main(args: Array[String]): Unit = {

@@ -6,6 +6,7 @@ from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic, constants
+from cocotb_test import simulator
 
 CASES_NUM = 50
 
@@ -27,7 +28,7 @@ class PoseidonThreadTester:
         dut.reset.value = 0
 
     def ref_poseidon_thread(self, state_size, round_index, state_ff):
-        """ reference poseidon thread function """
+        """reference poseidon thread function"""
         roundf = basic.ROUNDFULL
         roundp = basic.ROUNDPARTIAL[state_size]
 
@@ -36,14 +37,17 @@ class PoseidonThreadTester:
         )
 
         state_ff = poseidon_ff.add_round_constants_ff(
-            state_ff, round_constants_ff[round_index*state_size:(round_index+1)*state_size]
+            state_ff,
+            round_constants_ff[
+                round_index * state_size : (round_index + 1) * state_size
+            ],
         )
-        
-        if ( (round_index >= roundf / 2) & (round_index < (roundf / 2 + roundp))):
+
+        if (round_index >= roundf / 2) & (round_index < (roundf / 2 + roundp)):
             state_ff[0] = poseidon_ff.s_box_ff(state_ff[0])
         else:
             state_ff = poseidon_ff.s_boxes_ff(state_ff)
-        
+
         state_ff = poseidon_ff.mds_mixing_ff(state_ff)
 
         return state_ff
@@ -55,7 +59,7 @@ class PoseidonThreadTester:
         round_index = random.randint(0, round_map[state_size] - 1)
         state_ff = []
         for i in range(state_size):
-            state_ff.append( ff.PrimeField(random.randint(0, basic.P - 1)) )
+            state_ff.append(ff.PrimeField(random.randint(0, basic.P - 1)))
         return round_index, state_size, state_ff
 
     async def drive_input_ports(self):
@@ -72,7 +76,7 @@ class PoseidonThreadTester:
             # assign dut io port
 
             for i in range(state_size):
-                dut.io_input_valid.value = True #random.random() > 0.2
+                dut.io_input_valid.value = True  # random.random() > 0.2
                 dut.io_input_payload_round_index.value = round_index
                 dut.io_input_payload_state_index.value = i
                 dut.io_input_payload_state_size.value = state_size
@@ -80,7 +84,7 @@ class PoseidonThreadTester:
                 dut.io_input_payload_state_id.value = cases_count % pow(2, 6)
                 await RisingEdge(dut.clk)
                 while (dut.io_input_valid.value & dut.io_input_ready.value) == False:
-                    dut.io_input_valid.value = True #random.random() > 0.2
+                    dut.io_input_valid.value = True  # random.random() > 0.2
                     await RisingEdge(dut.clk)
 
             if state_size == 5:
@@ -90,15 +94,11 @@ class PoseidonThreadTester:
                 await RisingEdge(dut.clk)
                 while (dut.io_input_valid.value & dut.io_input_ready.value) == False:
                     await RisingEdge(dut.clk)
-                
+
             cases_count += 1
-            self.ref_inputs.put(
-                [round_index, state_size, state_elements]
-            )
+            self.ref_inputs.put([round_index, state_size, state_elements])
             self.ref_outputs.put(
-                self.ref_poseidon_thread(
-                    state_size, round_index, state_elements
-                )
+                self.ref_poseidon_thread(state_size, round_index, state_elements)
             )
 
         dut.io_input_valid.value = False
@@ -108,7 +108,7 @@ class PoseidonThreadTester:
         count_cases = 0
 
         while count_cases < CASES_NUM:
-            self.dut.io_output_ready.value = True #random.random() > 0.4
+            self.dut.io_output_ready.value = True  # random.random() > 0.4
             await RisingEdge(self.dut.clk)
             if (
                 self.dut.io_output_ready.value & self.dut.io_output_valid.value
@@ -121,7 +121,9 @@ class PoseidonThreadTester:
                 ref_res = self.ref_outputs.get()
                 dut_res = []
                 for i in range(12):
-                    exec( f"dut_res.append(int(self.dut.io_output_payload_state_elements_{i}.value))" )
+                    exec(
+                        f"dut_res.append(int(self.dut.io_output_payload_state_elements_{i}.value))"
+                    )
 
                 for i in range(state_size):
                     if ref_res[i].value != dut_res[i]:
@@ -130,11 +132,11 @@ class PoseidonThreadTester:
                         print("input:", round_index, state_size)
                         for element in state_elements:
                             print(hex(element.value))
-                        
+
                         print("ref res:")
                         for element in ref_res:
                             print(hex(element.value))
-                        
+
                         print("dut res:")
                         print(
                             "state_id:{}".format(
@@ -172,6 +174,16 @@ async def PoseidonThreadTest(dut):
     while True:
         await RisingEdge(dut.clk)
 
-    
 
-
+# pytest
+def test_PoseidonThread():
+    simulator.run(
+        verilog_sources=[
+            "../main/verilog/PoseidonThread.v",
+            "../main/verilog/MontMultiplierBasics.v",
+            "../main/verilog/ModAdder.v",
+        ],
+        toplevel="PoseidonThread",
+        module="PoseidonThreadTester",
+        python_search="./src/reference_model/",
+    )

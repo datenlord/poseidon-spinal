@@ -7,7 +7,10 @@ from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import basic
 
+from cocotb_test import simulator
+
 CASES_NUM = 1000  # the number of test cases
+
 
 class AXI4StreamReceiverTester:
     def __init__(self, target) -> None:
@@ -32,7 +35,7 @@ class AXI4StreamReceiverTester:
 
         for i in range(12):
             if i < rand_size:
-               rand_vec.append(random.randint(0, basic.P - 1)) 
+                rand_vec.append(random.randint(0, basic.P - 1))
             else:
                 rand_vec.append(0)
         return rand_size, rand_vec
@@ -46,9 +49,9 @@ class AXI4StreamReceiverTester:
             )
         for i in range(12):
             if dut_res[i] != ref_res[i]:
-                return False,dut_res
-        
-        return True,dut_res
+                return False, dut_res
+
+        return True, dut_res
 
     async def drive_input_ports(self):
         """generate input signals"""
@@ -71,7 +74,7 @@ class AXI4StreamReceiverTester:
                 dut.io_input_valid.value = False
 
             state_id = self.cases_count % pow(2, 5)
-            self.ref_outputs.put( [state_id, state_size, state_elements] )
+            self.ref_outputs.put([state_id, state_size, state_elements])
 
             self.cases_count += 1
 
@@ -89,18 +92,28 @@ class AXI4StreamReceiverTester:
                 dut_size = int(dut.io_output_payload_state_size.value)
 
                 elements_equal, dut_elements = self.check_state_elements(elements)
-                if ((dut_size != size)|(not elements_equal)| (dut_id != id)):
-                    print("reference output: \nstate_size:{}\nstate_id:{}".format(size, id))
+                if (dut_size != size) | (not elements_equal) | (dut_id != id):
+                    print(
+                        "reference output: \nstate_size:{}\nstate_id:{}".format(
+                            size, id
+                        )
+                    )
                     print("state_elements:")
-                    for i in range(12): print(hex(elements[i]))
+                    for i in range(12):
+                        print(hex(elements[i]))
 
-                    print("dut output: \nstate_size:{}\nstate_id:{}".format(dut_size, dut_id))
+                    print(
+                        "dut output: \nstate_size:{}\nstate_id:{}".format(
+                            dut_size, dut_id
+                        )
+                    )
                     print("state_elements:")
-                    for i in range(12): print(hex(dut_elements[i]))
+                    for i in range(12):
+                        print(hex(dut_elements[i]))
 
                     raise TestFailure("test case {} failed".format(self.cases_count))
 
-            if((self.cases_count==CASES_NUM) & self.ref_outputs.empty()):
+            if (self.cases_count == CASES_NUM) & self.ref_outputs.empty():
                 raise TestSuccess(" pass {} test cases".format(CASES_NUM))
 
 
@@ -123,4 +136,12 @@ async def AXI4StreamReceiverTest(dut):
     while True:
         await RisingEdge(dut.clk)
 
-    
+
+# pytest
+def test_AXI4StreamReceiver():
+    simulator.run(
+        verilog_sources=["../main/verilog/AXI4StreamReceiver.v"],
+        toplevel="AXI4StreamReceiver",
+        module="AXI4StreamReceiverTester",
+        python_search="./src/reference_model/",
+    )

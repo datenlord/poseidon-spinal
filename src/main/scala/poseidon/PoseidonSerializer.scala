@@ -4,30 +4,34 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
 
-object PoseidonSerializer{
-  def apply(g:PoseidonGenerics, input:Stream[MDSContext]):Stream[Context]={
+object PoseidonSerializer {
+  def apply(g: PoseidonGenerics, input: Stream[MDSContext]): Stream[Context] = {
     val serializerInst = PoseidonSerializer(g)
     serializerInst.io.parallelInput << input
     serializerInst.io.serialOutput
   }
 }
 
-case class PoseidonSerializer(g:PoseidonGenerics) extends Component{
+case class PoseidonSerializer(g: PoseidonGenerics) extends Component {
 
-  val io = new Bundle{
-    val parallelInput = slave Stream(MDSContext(g))
-    val serialOutput = master Stream(new Context(g))
+  val io = new Bundle {
+    val parallelInput = slave Stream (MDSContext(g))
+    val serialOutput = master Stream (new Context(g))
   }
 
-  val stateSize = Reg(UInt(log2Up(g.t_max) bits)) init(0)
-  val lastElementIndex = Mux(stateSize===5,stateSize,stateSize-1) // when size is 5, resize to 6
-  val roundIndex= Reg(UInt(log2Up(g.round_max) bits)) init(0)
-  val stateID   = Reg(UInt(g.id_width bits)) init(0)
+  val stateSize = Reg(UInt(log2Up(g.t_max) bits)) init (0)
+  val lastElementIndex = Mux(
+    stateSize === 5,
+    stateSize,
+    stateSize - 1
+  ) // when size is 5, resize to 6
+  val roundIndex = Reg(UInt(log2Up(g.round_max) bits)) init (0)
+  val stateID = Reg(UInt(g.id_width bits)) init (0)
   val buffer = Vec(Reg(UInt(g.data_width bits)), g.t_max)
-  buffer.foreach(_ init(0))
+  buffer.foreach(_ init (0))
 
-  val fsm = new StateMachine{
-    val counter = Reg(UInt(log2Up(g.t_max) bits)) init(0)
+  val fsm = new StateMachine {
+    val counter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
 
     val IDLE = new State with EntryPoint
     val BUSY = new State
@@ -44,10 +48,10 @@ case class PoseidonSerializer(g:PoseidonGenerics) extends Component{
     io.serialOutput.round_index := 0
 
     IDLE
-      .whenIsActive{
+      .whenIsActive {
         io.parallelInput.ready := True
-        when(io.parallelInput.fire){
-          (buffer lazyZip io.parallelInput.state_elements).foreach(_:=_)
+        when(io.parallelInput.fire) {
+          (buffer lazyZip io.parallelInput.state_elements).foreach(_ := _)
           stateID := io.parallelInput.state_id
           stateSize := io.parallelInput.state_size
           roundIndex := io.parallelInput.round_index
@@ -56,21 +60,21 @@ case class PoseidonSerializer(g:PoseidonGenerics) extends Component{
       }
 
     BUSY
-      .whenIsActive{
+      .whenIsActive {
         io.serialOutput.valid := True
         io.serialOutput.state_element := buffer(counter)
         io.serialOutput.state_index := counter
         io.serialOutput.state_size := stateSize
         io.serialOutput.round_index := roundIndex
         io.serialOutput.state_id := stateID
-        when(io.serialOutput.fire){
+        when(io.serialOutput.fire) {
           counter := counter + 1
-          when(counter === lastElementIndex-1) { goto(LAST) }
+          when(counter === lastElementIndex - 1) { goto(LAST) }
         }
       }
 
     LAST
-      .whenIsActive{
+      .whenIsActive {
         io.serialOutput.valid := True
         io.serialOutput.state_element := buffer(counter)
         io.serialOutput.state_index := counter
@@ -78,25 +82,24 @@ case class PoseidonSerializer(g:PoseidonGenerics) extends Component{
         io.serialOutput.round_index := roundIndex
         io.serialOutput.state_id := stateID
 
-        when(io.serialOutput.fire){
+        when(io.serialOutput.fire) {
           io.parallelInput.ready := True
-          when(io.parallelInput.fire){
-            (buffer lazyZip io.parallelInput.state_elements).foreach(_:=_)
+          when(io.parallelInput.fire) {
+            (buffer lazyZip io.parallelInput.state_elements).foreach(_ := _)
             stateID := io.parallelInput.state_id
             stateSize := io.parallelInput.state_size
             roundIndex := io.parallelInput.round_index
             goto(BUSY)
-          } otherwise( goto(IDLE) )
+          } otherwise (goto(IDLE))
         }
       }
       .onExit(counter := 0)
   }
 }
 
-
-object PoseidonSerializerVerilog{
+object PoseidonSerializerVerilog {
   def main(args: Array[String]): Unit = {
-    
+
     val config = PoseidonGenerics(
       t_max = 12,
       round_max = 65,
@@ -112,5 +115,3 @@ object PoseidonSerializerVerilog{
     ).generate(PoseidonSerializer(config))
   }
 }
-
-

@@ -7,6 +7,8 @@ from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import basic
 
+from cocotb_test import simulator
+
 CASES_NUM = 5000  # the number of test cases
 BUFFER_SIZE = 5  # the size of buffer in transmitter
 
@@ -91,3 +93,13 @@ async def AXI4StreamTransmitterTest(dut):
 
     while True:
         await RisingEdge(dut.clk)
+
+
+# pytest
+def test_AXI4StreamTransmitter():
+    simulator.run(
+        verilog_sources=["../main/verilog/AXI4StreamTransmitter.v"],
+        toplevel="AXI4StreamTransmitter",
+        module="AXI4StreamTransmitterTester",
+        python_search="./src/reference_model/",
+    )

@@ -2,6 +2,7 @@ import cocotb
 from poseidon_python import basic
 from cocotb.triggers import Timer
 import random
+from cocotb_test import simulator
 
 
 @cocotb.test()
@@ -40,3 +41,13 @@ async def ModAdderTest(dut):
         assert dut.res_o == res % basic.P, "the result of {} + {} is wrong".format(
             op1, op2
         )
+
+
+# pytest
+def test_ModAdder():
+    simulator.run(
+        verilog_sources=["../main/verilog/ModAdder.v"],
+        toplevel="ModAdder",
+        module="ModAdderTester",
+        python_search="./src/reference_model/",
+    )

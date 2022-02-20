@@ -7,6 +7,8 @@ from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import basic
 
+from cocotb_test import simulator
+
 CASES_NUM = 500  # the number of test cases
 
 
@@ -45,9 +47,7 @@ class MDSMatrixAddersTester:
 
     def set_input_ports(self, values):
         for j in range(12):
-            exec(
-                f"self.dut.io_input_payload_state_elements_{j}.value = values[{j}]"
-            )
+            exec(f"self.dut.io_input_payload_state_elements_{j}.value = values[{j}]")
 
     def check_ports(self, ref_res):
         dut_res = []
@@ -77,7 +77,7 @@ class MDSMatrixAddersTester:
                 self.set_input_ports(row)
 
                 await RisingEdge(dut.clk)
-                while((dut.io_input_valid.value & dut.io_input_ready.value)==False):
+                while (dut.io_input_valid.value & dut.io_input_ready.value) == False:
                     dut.io_input_valid.value = random.random() > 0.2
                     await RisingEdge(dut.clk)
 
@@ -88,9 +88,9 @@ class MDSMatrixAddersTester:
                     ref_res[j] = basic.PrimeFieldOps.add(ref_res[j], matrix[i][j])
 
             self.ref_outputs.put([size, ref_res])
-            
+
             cases_count += 1
-           
+
         dut.io_input_valid.value = False
 
     async def check_output_ports(self):
@@ -146,3 +146,14 @@ async def MDSMatrixAddersTest(dut):
         await RisingEdge(dut.clk)
 
 
+# pytest
+def test_MDSMatrixAdders():
+    simulator.run(
+        verilog_sources=[
+            "../main/verilog/MDSMatrixAdders.v",
+            "../main/verilog/ModAdder.v",
+        ],
+        toplevel="MDSMatrixAdders",
+        module="MDSMatrixAddersTester",
+        python_search="./src/reference_model/",
+    )

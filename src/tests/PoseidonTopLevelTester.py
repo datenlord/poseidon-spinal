@@ -7,7 +7,9 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic
 
-CASES_NUM = 30
+from cocotb_test import simulator
+
+CASES_NUM = 20
 
 
 class PoseidonTopLevelTester:
@@ -30,7 +32,7 @@ class PoseidonTopLevelTester:
         """get random input values"""
         size_range = [3, 5, 9, 12]
         # state_size  = size_range[random.randint(0,3)]
-        state_size = 3#size_range[int(cases_count / 25)]
+        state_size = 3  # size_range[int(cases_count / 25)]
         state_elements = []
         for i in range(state_size):
             state_elements.append(ff.PrimeField(random.randint(0, basic.P - 1)))
@@ -74,7 +76,7 @@ class PoseidonTopLevelTester:
                 self.dut.io_output_ready.value & self.dut.io_output_valid.value
             ) == True:
                 dut_res = int(self.dut.io_output_payload.value)
-                #dut_res = int(self.dut.io_output_payload_state_element.value)
+                # dut_res = int(self.dut.io_output_payload_state_element.value)
                 ref_input = self.ref_inputs.get()
                 ref_output = self.ref_outputs.get()
 
@@ -112,40 +114,34 @@ async def PoseidonTopLevelTest(dut):
     await tester.reset_dut()
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())
-    #rindex = [0,0,0,0]
+    # rindex = [0,0,0,0]
     while True:
         await RisingEdge(dut.clk)
 
-        if (dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value) == True:
-            round_index = int(dut.poseidonLoop_3.streamArbiter_49_io_output_payload_round_index.value)
-            state_id = int (dut.poseidonLoop_3.streamArbiter_49_io_output_payload_state_id.value)
+        if (
+            dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
+            & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value
+        ) == True:
+            round_index = int(
+                dut.poseidonLoop_3.streamArbiter_49_io_output_payload_round_index.value
+            )
+            state_id = int(
+                dut.poseidonLoop_3.streamArbiter_49_io_output_payload_state_id.value
+            )
             print("Thread0: ")
             print(f"state_id: {state_id}")
             print(f"round_index: {round_index}")
 
-        # if (dut.poseidonLoop_3_io_input_ready.value & dut.loopInputs_0_valid.value) == True: 
-        #     round_index = int(dut.loopInputs_0_payload_round_index)
-        #     state_id = int (dut.loopInputs_0_payload_state_id)
-        #     print("Loop0: ")
-        #     print(f"state_id: {state_id}")
-        #     print(f"round_index: {round_index} ")
 
-        # dut_rindex = int(dut.poseidonThread_1_io_output_payload_round_index)
-        # if(dut_rindex != rindex[0]):
-        #     rindex[0] = dut_rindex
-        #     print(f"thread 0: round index:{rindex[0]}")
-        
-        # dut_rindex = int(dut.poseidonThread_5_io_output_payload_round_index)
-        # if(dut_rindex != rindex[1]):
-        #     rindex[1] = dut_rindex
-        #     print(f"thread 1: round index:{rindex[1]}")
-        
-        # dut_rindex = int(dut.poseidonThread_6_io_output_payload_round_index)
-        # if(dut_rindex != rindex[2]):
-        #     rindex[2] = dut_rindex
-        #     print(f"thread 2: round index:{rindex[2]}")
-        
-        # dut_rindex = int(dut.poseidonThread_7_io_output_payload_round_index)
-        # if(dut_rindex != rindex[3]):
-        #     rindex[3] = dut_rindex
-        #     print(f"thread 2: round index:{rindex[3]}")
+# pytest
+def test_PoseidonTopLevel():
+    simulator.run(
+        verilog_sources=[
+            "../main/verilog/PoseidonTopLevel.v",
+            "../main/verilog/MontMultiplierBasics.v",
+            "../main/verilog/ModAdder.v",
+        ],
+        toplevel="PoseidonTopLevel",
+        module="PoseidonTopLevelTester",
+        python_search="./src/reference_model/",
+    )

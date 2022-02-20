@@ -41,8 +41,8 @@ function build_and_test()
     then
         echo -e "Building ${component} ... \n"
         
-        docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 mill poseidon.runMain poseidon.${object}
-        #docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
+        #docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 mill poseidon.runMain poseidon.${object}
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
     fi
 
     echo -e "Compile And Build ${component} successfully !!!\n"
@@ -51,13 +51,13 @@ function build_and_test()
     # copy rom files to testbench file 
     if [[ $component = ${Components[3]} || $component = ${Components[4]} || $component = ${Components[9]} ]]
     then
-        mv ./src/main/verilog/*.bin ./src/tests/$testbench/
+        mv ./src/main/verilog/*.bin ./src/tests/
     fi
 
-    #docker run --rm -v $(pwd):$(pwd) -w $(pwd)/src/tests/$testbench -u root datenlord/spinal-cocotb:1.6.1 make
-    docker exec -w /spinalworkspace/poseidon-spinal/src/tests/$testbench spinalhdl02 make
+    docker run --rm -v $(pwd):$(pwd) -w $(pwd)/src/tests/$testbench -u root datenlord/spinal-cocotb:1.6.1 make
+    #docker exec -w /spinalworkspace/poseidon-spinal/src/tests/ spinalhdl02 make DUT=${component}
     
-    rm -f ./src/tests/$testbench/*.bin
+    rm -f ./src/tests/*.bin
     if [[ $component != ${Components[0]} && $component != ${Components[1]} ]] 
     then
         rm -f ./src/main/verilog/"${component}.v"
@@ -70,14 +70,14 @@ while getopts "cfhlae:" opt
 do
     case $opt in
         c)
-        #docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
-        docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
+        #docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 sh -c "mill poseidon.checkFormat && mill poseidon.fix --check"
         black --check $(find ./src -name "*.py")
         ;;
         
         f)
-        #docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
-        docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
+        #docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 sh -c "mill mill.scalalib.scalafmt.ScalafmtModule/reformatAll __.sources && mill poseidon.fix"
         black $(find ./src -name "*.py")
         ;;
 

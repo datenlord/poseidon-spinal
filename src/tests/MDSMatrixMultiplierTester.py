@@ -7,6 +7,8 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff
 
+from cocotb_test import simulator
+
 CASES_NUM = 50
 
 
@@ -128,3 +130,16 @@ async def MDSMatrixMultiplierTest(dut):
 
     while True:
         await RisingEdge(dut.clk)
+
+
+# pytest
+def test_MDSMatrixMultiplier():
+    simulator.run(
+        verilog_sources=[
+            "../main/verilog/MDSMatrixMultiplier.v",
+            "../main/verilog/MontMultiplierBasics.v",
+        ],
+        toplevel="MDSMatrixMultiplier",
+        module="MDSMatrixMultiplierTester",
+        python_search="./src/reference_model/",
+    )
