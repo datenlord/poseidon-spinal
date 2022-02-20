@@ -1,6 +1,7 @@
 # Makefile
 
 # defaults
+WAVES ?= 1
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
@@ -11,7 +12,7 @@ export PYTHONPATH := $(PWD)/../../reference_model/poseidon_python:$(PYTHONPATH)
 VERILOG_SOURCES += ../../main/verilog/PoseidonTopLevel.v
 VERILOG_SOURCES += ../../main/verilog/ModAdder.v
 VERILOG_SOURCES += ../../main/verilog/ModMultiplier.v
-
+VERILOG_SOURCES += ../../main/verilog/MontMultiplierBasics.v
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
 TOPLEVEL = PoseidonTopLevel

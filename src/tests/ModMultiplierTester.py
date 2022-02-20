@@ -6,23 +6,23 @@ from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import finite_field as ff
 
-CASES_NUM = 500  # the number of test cases
+CASES_NUM = 3000  # the number of test cases
 
 
-class MontMultiplierPipedTester:
+class ModMultiplierTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_outputs = Queue(maxsize=60)  # store reference results
+        self.ref_outputs = Queue(maxsize=5)  # store reference results
 
     async def reset_dut(self):
         dut = self.dut
-        dut.reset.value = 0
+        dut.rst.value = 0
         await RisingEdge(dut.clk)
-        dut.reset.value = 1
+        dut.rst.value = 1
         for i in range(3):
             await RisingEdge(dut.clk)
 
-        dut.reset.value = 0
+        dut.rst.value = 0
 
     def get_random_values(self):
         rand_valid = random.random() > 0.3
@@ -38,18 +38,18 @@ class MontMultiplierPipedTester:
             valid, op1, op2 = self.get_random_values()
 
             # assign random values to dut io port
-            dut.io_input_valid.value = valid
-            dut.io_input_payload_op1.value = op1.value
-            dut.io_input_payload_op2.value = op2.value
+            dut.op_valid_i.value = valid
+            dut.op1_i.value = op1.value
+            dut.op2_i.value = op2.value
 
             await RisingEdge(dut.clk)
-            if dut.io_input_valid.value & dut.io_input_ready.value:
+            if dut.op_valid_i.value & dut.op_ready_o.value:
                 cases_count += 1
                 self.ref_outputs.put(
                     [op1.value, op2.value, op1.MonPro(op1.value, op2.value)]
                 )
 
-        dut.io_input_valid.value = False
+        dut.op_valid_i.value = False
 
     async def check_output(self):
         """check output signals"""
@@ -58,12 +58,12 @@ class MontMultiplierPipedTester:
         while cases_count < CASES_NUM:
 
             ready = random.random() > 0.3
-            dut.io_output_ready.value = ready
+            dut.res_ready_i.value = ready
             await RisingEdge(dut.clk)
-            if dut.io_output_ready.value & dut.io_output_valid.value == True:
+            if dut.res_ready_i.value & dut.res_valid_o.value == True:
                 cases_count += 1
                 op1, op2, ref_res = self.ref_outputs.get()
-                dut_res = int(dut.io_output_payload_res.value)
+                dut_res = int(dut.res_o.value)
 
                 assert (
                     dut_res == ref_res
@@ -78,12 +78,12 @@ class MontMultiplierPipedTester:
 async def ModMultiplierTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
-    dut.io_input_valid.value = False
-    dut.io_input_payload_op1.value = 0
-    dut.io_input_payload_op2.value = 0
-    dut.io_output_ready.value = False
+    dut.op_valid_i.value = False
+    dut.op1_i.value = 0
+    dut.op2_i.value = 0
+    dut.res_ready_i.value = False
 
-    tester = MontMultiplierPipedTester(dut)
+    tester = ModMultiplierTester(dut)
     await tester.reset_dut()
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())

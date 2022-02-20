@@ -28,12 +28,12 @@ def s_boxes_ff(array):
     return tmp
 
 
-def add_round_constants_ff(states_ff, constants_ff):
+def add_round_constants_ff(state_ff, constants_ff):
 
-    for i in range(len(states_ff)):
-        states_ff[i].addassign(constants_ff[i])
+    for i in range(len(state_ff)):
+        state_ff[i].addassign(constants_ff[i])
 
-    return states_ff
+    return state_ff
 
 
 def mds_mixing_ff(state_ff):

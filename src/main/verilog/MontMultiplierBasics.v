@@ -70,3 +70,47 @@ module OneBitFullAdderArray #(
     assign sum_o   = sum_connections[ROW_NUM];
     
 endmodule
+
+
+// OneBitFullAdderArraySim used for faster simulation
+module OneBitFullAdderArraySim #(
+    parameter MODULUS = 255'h73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001,
+    parameter ROW_NUM = 5,
+    parameter DATA_WIDTH = 255
+)
+(
+    // input ports
+    input wire [ROW_NUM-1:0]    x_temp_i,
+    input wire [DATA_WIDTH-1:0] y_temp_i,
+    input wire [DATA_WIDTH  :0] y_add_m_i,
+    input wire [DATA_WIDTH  :0] adder_res_i,
+
+    // output ports
+    output wire [DATA_WIDTH :0] adder_res_o
+    
+    );
+
+    wire [DATA_WIDTH:0] res_connections [ROW_NUM:0];
+    assign res_connections[0] = adder_res_i;
+
+
+    genvar i;
+    generate
+        for(i=0; i<ROW_NUM; i=i+1) begin: OneBitFullAdderVecs
+            wire [DATA_WIDTH:0] adder_op1, adder_op2;
+            wire [DATA_WIDTH+1:0] adder_res;
+            assign adder_op1 = res_connections[i];
+            wire select_M  = ~x_temp_i[i] & adder_op1[0];
+            wire select_Y  =  x_temp_i[i] & ~(adder_op1[0] ^ y_temp_i[0]);
+            wire select_MY =  x_temp_i[i] &  (adder_op1[0] ^ y_temp_i[0]);
+
+            assign adder_op2 = {1'b0, { DATA_WIDTH {select_M} } & MODULUS } |
+                               {1'b0, { DATA_WIDTH {select_Y} } & y_temp_i} |
+                                  ( {DATA_WIDTH+1{select_MY}} & y_add_m_i ) ;  
+            assign adder_res = adder_op1 + adder_op2;
+            assign res_connections[i+1] = adder_res[DATA_WIDTH+1:1];
+        end
+    endgenerate
+    assign adder_res_o = res_connections[ROW_NUM];
+    
+endmodule

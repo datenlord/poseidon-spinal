@@ -32,32 +32,32 @@ case class MDSMatrixMultiplier(g: PoseidonGenerics, mulConfig:MontMultiplierConf
   }
 
   // mds_matrix_rom
-  val mdsMatrix_t3  = new MDSMatrix(t = 3,data_width = g.data_width)
-  val mdsMatrix_t5  = new MDSMatrix(t = 5,data_width = g.data_width)
-  val mdsMatrix_t9  = new MDSMatrix(t = 9,data_width = g.data_width)
-  val mdsMatrix_t12 = new MDSMatrix(t = 12, data_width = g.data_width)
-  mdsMatrix_t3.io.address_port  := io.input.state_index.resized
-  mdsMatrix_t5.io.address_port  := io.input.state_index.resized
-  mdsMatrix_t9.io.address_port  := io.input.state_index.resized
-  mdsMatrix_t12.io.address_port := io.input.state_index.resized
+  val mdsMatrix_t3  = MDSMatrix(t = 3, dataWidth = g.data_width, io.input.state_index.resized)
+  val mdsMatrix_t5  = MDSMatrix(t = 5, dataWidth = g.data_width, io.input.state_index.resized)
+  val mdsMatrix_t9  = MDSMatrix(t = 9, dataWidth = g.data_width, io.input.state_index.resized)
+  val mdsMatrix_t12 = MDSMatrix(t = 12, dataWidth = g.data_width, io.input.state_index.resized)
+  // mdsMatrix_t3.io.address_port  := io.input.state_index.resized
+  // mdsMatrix_t5.io.address_port  := io.input.state_index.resized
+  // mdsMatrix_t9.io.address_port  := io.input.state_index.resized
+  // mdsMatrix_t12.io.address_port := io.input.state_index.resized
 
   val mulOp2s = Vec(UInt(g.data_width bits), g.t_max)
   switch(io.input.state_size){
     is(3){
-      mulOp2s.assignFromBits( B(0,(g.t_max-3)*g.data_width bits) ## mdsMatrix_t3.io.data_ports.asBits)
+      mulOp2s.assignFromBits( B(0,(g.t_max-3)*g.data_width bits) ## mdsMatrix_t3.asBits)
     }
     is(5){
       when(io.input.state_index===5){
         mulOp2s.assignFromBits( B(0, g.t_max*g.data_width bits) )
       }otherwise{
-        mulOp2s.assignFromBits(B(0,(g.t_max-5)*g.data_width bits) ## mdsMatrix_t5.io.data_ports.asBits)
+        mulOp2s.assignFromBits(B(0,(g.t_max-5)*g.data_width bits) ## mdsMatrix_t5.asBits)
       }
     }
     is(9){
-      mulOp2s.assignFromBits(B(0,(g.t_max-9)*g.data_width bits) ## mdsMatrix_t9.io.data_ports.asBits)
+      mulOp2s.assignFromBits(B(0,(g.t_max-9)*g.data_width bits) ## mdsMatrix_t9.asBits)
     }
     is(12){
-      mulOp2s.assignFromBits(mdsMatrix_t12.io.data_ports.asBits)
+      mulOp2s.assignFromBits(mdsMatrix_t12.asBits)
     }
     default{
       mulOp2s.assignFromBits(B(0,g.t_max*g.data_width bits))
@@ -68,30 +68,38 @@ case class MDSMatrixMultiplier(g: PoseidonGenerics, mulConfig:MontMultiplierConf
   val inputForked = StreamFork(io.input, 2, true)
 
   val mulOp1s = StreamFork(inputForked(0).translateWith(io.input.state_element),g.t_max,true)
-  val montMultipliers:IndexedSeq[MontMultiplierPiped] = IndexedSeq.fill(g.t_max)(MontMultiplierPiped(mulConfig))
-
-  for(i <- 0 until g.t_max){
-    montMultipliers(i).io.input.arbitrationFrom(mulOp1s(i))
-    montMultipliers(i).io.input.op1 := mulOp1s(i).payload
-    montMultipliers(i).io.input.op2 := mulOp2s(i)
-  }
-
+  
+  val mulInputs = for(i <- 0 until g.t_max)
+    yield mulOp1s(i).translateWith{
+      val payload = operands(g.data_width)
+      payload.op1 := mulOp1s(i).payload
+      payload.op2 := mulOp2s(i)
+      payload
+    }
+  
+  val mulOutputs = 
+    if(g.isSim){
+      mulInputs.map(MontMultiplierPipedSim(mulConfig,_))
+    } else{
+      mulInputs.map(MontMultiplierPipedSim(mulConfig,_))
+    }
 
   val mulContext = inputForked(1).translateWith{
     val payload = MDSMulContext(g)
     payload.assignSomeByName(io.input.payload)
     payload
-  }.queue(5)
+  }.queue(8)
 
 
-  val mulResJoined = StreamJoin(montMultipliers.map(_.io.output))
+  val mulResJoined = StreamJoin(mulOutputs)
   io.output << StreamJoin.arg(mulResJoined, mulContext).translateWith{
     val payload = MDSContext(g)
     payload.assignSomeByName(mulContext.payload)
-    payload.state_elements.assignFromBits(montMultipliers.map(_.io.output.res).asBits())
+    payload.state_elements.assignFromBits(mulOutputs.map(_.res).asBits())
     payload
   }.stage()
 
+  
 }
 
 
@@ -101,9 +109,10 @@ object MDSMatrixMultiplierVerilog {
     val config = PoseidonGenerics(
       t_max = 12,
       round_max = 65,
-      thread_num = 5,
+      loop_num = 5,
       data_width = 255,
-      id_width = 4
+      id_width = 4,
+      isSim = true
     )
     
     val modulus = BigInt("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001", radix = 16)
