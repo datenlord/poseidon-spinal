@@ -102,7 +102,7 @@ case class MDSMatrixMultiplier(
     if (g.isSim) {
       mulInputs.map(MontMultiplierPipedSim(mulConfig, _))
     } else {
-      mulInputs.map(MontMultiplierPipedSim(mulConfig, _))
+      mulInputs.map(MontMultiplierPiped(mulConfig, _))
     }
 
   val mulContext = inputForked(1)

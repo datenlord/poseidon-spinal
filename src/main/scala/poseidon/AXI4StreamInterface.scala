@@ -82,16 +82,16 @@ case class TransmitterContext(g: PoseidonGenerics) extends Bundle {
 object AXI4StreamTransmitter {
   def apply(
       g: PoseidonGenerics,
-      buffer_depth: Int,
+      bufferDepth: Int,
       input: Stream[TransmitterContext]
   ): AXI4Stream = {
-    val transmitterInst = new AXI4StreamTransmitter(g, buffer_depth)
+    val transmitterInst = new AXI4StreamTransmitter(g, bufferDepth)
     transmitterInst.io.input << input
     transmitterInst.io.output
   }
 }
 
-class AXI4StreamTransmitter(g: PoseidonGenerics, buffer_depth: Int)
+class AXI4StreamTransmitter(g: PoseidonGenerics, bufferDepth: Int)
     extends Component {
 
   val io = new Bundle {
@@ -103,26 +103,47 @@ class AXI4StreamTransmitter(g: PoseidonGenerics, buffer_depth: Int)
   when(io.output.fire()) {
     idCounter := idCounter + 1
   }
-  val input_demux = Vec(Stream(TransmitterContext(g)), buffer_depth)
-  val demux_select = OHToUInt(OHMasking.first(input_demux.map(_.ready)))
 
-  input_demux
-    .lazyZip(StreamDemux(io.input, demux_select, buffer_depth))
-    .foreach(_ << _)
-
-  val buffer = input_demux.map(_.stage())
-  val select = OHToUInt(
-    buffer
-      .map(_.valid)
-      .lazyZip(buffer.map(_.state_id))
-      .map(_ & _ === idCounter)
-  )
-  val buffer_out = StreamMux(select, buffer)
-
-  io.output.valid := buffer_out.valid && buffer_out.state_id === idCounter
+  val loopback = Stream(TransmitterContext(g))
+  val temp = StreamArbiterFactory.lowerFirst.onArgs(io.input, loopback).stage()
+  val demuxOutputs = StreamDemux(temp,(temp.state_id === idCounter).asUInt,2)
   io.output.last := True
-  io.output.payload := buffer_out.state_element
-  buffer_out.ready := io.output.ready && buffer_out.state_id === idCounter
+  io.output.valid := demuxOutputs(1).valid
+  demuxOutputs(1).ready := io.output.ready
+  io.output.payload := demuxOutputs(1).state_element
+  loopback << demuxOutputs(0).queue(bufferDepth).s2mPipe()
+
+  // val inputTemp = io.input.s2mPipe().m2sPipe()
+  // val outputTemp = inputTemp.queue(bufferDepth)
+  // io.output.valid := outputTemp.valid
+  // io.output.payload := outputTemp.state_element
+  // io.output.last := True
+  // outputTemp.ready := io.output.ready
+
+  // val idCounter = Reg(UInt(g.id_width bits)) init (0)
+  // when(io.output.fire()) {
+  //   idCounter := idCounter + 1
+  // }
+  // val input_demux = Vec(Stream(TransmitterContext(g)), bufferDepth)
+  // val demux_select = OHToUInt(OHMasking.first(input_demux.map(_.ready)))
+
+  // input_demux
+  //   .lazyZip(StreamDemux(io.input, demux_select, bufferDepth))
+  //   .foreach(_ << _)
+
+  // val buffer = input_demux.map(_.stage())
+  // val select = OHToUInt(
+  //   buffer
+  //     .map(_.valid)
+  //     .lazyZip(buffer.map(_.state_id))
+  //     .map(_ & _ === idCounter)
+  // )
+  // val buffer_out = StreamMux(select, buffer)
+
+  // io.output.valid := buffer_out.valid && buffer_out.state_id === idCounter
+  // io.output.last := True
+  // io.output.payload := buffer_out.state_element
+  // buffer_out.ready := io.output.ready && buffer_out.state_id === idCounter
 }
 
 object AXI4StreamReceiverVerilog {
@@ -149,7 +170,7 @@ object AXI4StreamTransmitterVerilog {
     val config = PoseidonGenerics(
       t_max = 12,
       round_max = 65,
-      loop_num = 3,
+      loop_num = 2,
       data_width = 255,
       id_width = 5,
       isSim = true
@@ -157,6 +178,6 @@ object AXI4StreamTransmitterVerilog {
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
-    ).generate(new AXI4StreamTransmitter(config, 5))
+    ).generate(new AXI4StreamTransmitter(config, 10))
   }
 }

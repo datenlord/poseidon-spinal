@@ -117,8 +117,8 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
   //
   val demuxInst = LoopbackDeMux(g)
   demuxInst.io.input << threadOutput
-  loopback << demuxInst.io.output0.queue(5)
-  io.output << demuxInst.io.output1
+  loopback << demuxInst.io.output0.s2mPipe().m2sPipe()
+  io.output << demuxInst.io.output1.stage() // add a stage of register
 }
 
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
@@ -151,14 +151,14 @@ class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
 
   val loopInputs = Vec(Stream(MDSContext(config)), config.loop_num)
   val select = OHToUInt(OHMasking.first(loopInputs.map(_.ready)))
-  (loopInputs lazyZip StreamDemux(initialInput, select, config.loop_num))
-    .foreach(_ <-/< _)
+  (loopInputs lazyZip StreamDispatcherSequential(initialInput, config.loop_num))
+    .foreach(_ <-< _)
 
   val loopOutputs =
     for (i <- 0 until config.loop_num) yield PoseidonLoop(config, loopInputs(i))
 
   val transmitterInput = StreamArbiterFactory.lowerFirst.on(loopOutputs)
-  io.output.connectFrom(AXI4StreamTransmitter(config, 8, transmitterInput))
+  io.output.connectFrom(AXI4StreamTransmitter(config, 15, transmitterInput.stage()))
   //io.output << transmitterInput
 
   // val receiverData = AXI4StreamReceiver(config, io.input) // 2

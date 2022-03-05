@@ -7,7 +7,7 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from cocotb_test import simulator
 
-CASES_NUM = 500  # the number of test cases
+CASES_NUM = 5  # the number of test cases
 
 
 class MontMultiplierPipedTester:
@@ -26,7 +26,7 @@ class MontMultiplierPipedTester:
         dut.reset.value = 0
 
     def get_random_values(self):
-        rand_valid = random.random() > 0.3
+        rand_valid = True#random.random() > 0.3
         rand_op1 = ff.PrimeField(random.randint(0, ff.P - 1))
         rand_op2 = ff.PrimeField(random.randint(0, ff.P - 1))
         return rand_valid, rand_op1, rand_op2
@@ -58,7 +58,7 @@ class MontMultiplierPipedTester:
         cases_count = 0
         while cases_count < CASES_NUM:
 
-            ready = random.random() > 0.3
+            ready = True#random.random() > 0.3
             dut.io_output_ready.value = ready
             await RisingEdge(dut.clk)
             if dut.io_output_ready.value & dut.io_output_valid.value == True:
@@ -76,7 +76,7 @@ class MontMultiplierPipedTester:
 
 
 @cocotb.test(timeout_time=300000, timeout_unit="ns")
-async def ModMultiplierTest(dut):
+async def MontMultiplierTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
     dut.io_input_valid.value = False

@@ -9,7 +9,7 @@ from poseidon_python import poseidon_ff, basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 20
+CASES_NUM = 3
 
 
 class PoseidonTopLevelTester:
@@ -98,7 +98,7 @@ class PoseidonTopLevelTester:
         raise TestSuccess(" pass {} test cases".format(CASES_NUM))
 
 
-@cocotb.test(timeout_time=600000, timeout_unit="ns")
+@cocotb.test(timeout_time=60000000000, timeout_unit="ns")
 async def PoseidonTopLevelTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
@@ -118,19 +118,19 @@ async def PoseidonTopLevelTest(dut):
     while True:
         await RisingEdge(dut.clk)
 
-        if (
-            dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
-            & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value
-        ) == True:
-            round_index = int(
-                dut.poseidonLoop_3.streamArbiter_49_io_output_payload_round_index.value
-            )
-            state_id = int(
-                dut.poseidonLoop_3.streamArbiter_49_io_output_payload_state_id.value
-            )
-            print("Thread0: ")
-            print(f"state_id: {state_id}")
-            print(f"round_index: {round_index}")
+        # if (
+        #     dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
+        #     & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value
+        # ) == True:
+        #     round_index = int(
+        #         dut.poseidonLoop_3.streamArbiter_49_io_output_payload_round_index.value
+        #     )
+        #     state_id = int(
+        #         dut.poseidonLoop_3.streamArbiter_49_io_output_payload_state_id.value
+        #     )
+        #     print("Thread0: ")
+        #     print(f"state_id: {state_id}")
+        #     print(f"round_index: {round_index}")
 
 
 # pytest

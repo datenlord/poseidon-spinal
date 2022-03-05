@@ -9,8 +9,8 @@ from poseidon_python import basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 5000  # the number of test cases
-BUFFER_SIZE = 5  # the size of buffer in transmitter
+CASES_NUM = 1  # the number of test cases
+BUFFER_SIZE = 9  # the size of buffer in transmitter
 
 
 class AXI4StreamTransmitter:

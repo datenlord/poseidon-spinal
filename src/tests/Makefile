@@ -20,7 +20,7 @@ ifeq ($(DUT), MDSMatrixMultiplier)
 		VERILOG_SOURCES += ../main/verilog/ModMultiplier.v
 endif
 
-ifeq ($(DUT), MonMultiplierPiped)
+ifeq ($(DUT), MontMultiplierPiped)
 		VERILOG_SOURCES += ../main/verilog/MontMultiplierBasics.v
 endif
 
@@ -42,6 +42,9 @@ TOPLEVEL = $(DUT)
 
 # MODULE is the basename of the Python test file
 MODULE = $(DUT)Tester
+ifeq ($(DUT), MontMultiplierPipedSim2)
+	MODULE = MontMultiplierPipedTester
+endif
 
 
 # include cocotb's make rules to take care of the simulator setup

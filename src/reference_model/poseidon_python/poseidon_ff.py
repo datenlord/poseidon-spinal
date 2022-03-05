@@ -1,3 +1,4 @@
+import random
 import basic
 import finite_field as ff
 import constants
@@ -133,6 +134,22 @@ def poseidon_hash_ff(state_ff):
     return state_ff[1]
 
 
+def print_random_cases(cases_num, state_size):
+    ''' generate random test case and print '''
+    for i in range(cases_num):
+        state_elements = []
+        print(f"random input {i}:")
+        for index in range(state_size):
+            state_elements.append(ff.PrimeField(random.randint(0, basic.P-1)))
+            print(f"random_inputs[{i}][255*{index+1}-1:255*{index}] = 255'h", hex(state_elements[index].value))
+
+        ref_output = poseidon_hash_ff(state_elements)
+
+        print(f"reference output {i}:")
+        print(f"ref_outputs[{i}] = 255'h", hex(ref_output.value))
+
+
+
 def output_mds_matrix_ff():
     """get all mds_matrix in Montgomery domain and write to files"""
     os.mkdir("mds_matrixs_ff")
@@ -165,3 +182,6 @@ def output_round_constants_ff():
         for element in round_constants:
             fileobject.write(str(element.value) + "\n")
         fileobject.close()
+
+
+print_random_cases(3,9)
