@@ -11,6 +11,12 @@ export PYTHONPATH := $(PWD)/../reference_model/poseidon_python:$(PYTHONPATH)
 # add verilog sources
 VERILOG_SOURCES += ../main/verilog/$(DUT).v
 
+#PLUSARGS += -fst
+ifeq ($(WAVES), 1)
+	VERILOG_SOURCES += iverilog_dump.v
+	COMPILE_ARGS += -s iverilog_dump
+endif
+
 ifeq ($(DUT),MDSMatrixAdders)
 	VERILOG_SOURCES += ../main/verilog/ModAdder.v
 endif
@@ -46,9 +52,27 @@ ifeq ($(DUT), MontMultiplierPipedSim2)
 	MODULE = MontMultiplierPipedTester
 endif
 
+ifeq ($(DUT), MontgomeryMult)
+	MODULE = MontMultiplierPipedTester
+endif
+
+
+ifeq ($(DUT), MultiplierIPStream)
+	MODULE = MultiplierTester
+endif
+
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+
+iverilog_dump.v:
+	echo 'module iverilog_dump();' > $@
+	echo 'initial begin' >> $@
+	echo '    $$dumpfile("$(TOPLEVEL).vcd");' >> $@
+	echo '    $$dumpvars(0, $(TOPLEVEL));' >> $@
+	echo 'end' >> $@
+	echo 'endmodule' >> $@
 
 # clean
 clean::
