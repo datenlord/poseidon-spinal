@@ -9,7 +9,7 @@ from poseidon_python import poseidon_ff, basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 3
+CASES_NUM = 100
 
 
 class PoseidonTopLevelTester:
