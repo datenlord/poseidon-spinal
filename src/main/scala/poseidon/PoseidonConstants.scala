@@ -21,77 +21,116 @@ object get_matrix_from_file {
   }
 }
 
-class MDSMatrix(t: Int, data_width: Int) extends Component {
+object MDSMatrix {
+  def apply(t: Int, dataWidth: Int, address: UInt): Vec[UInt] = {
+    val matrixInst = MDSMatrix(t, dataWidth)
+    matrixInst.io.addressPort := address
+    matrixInst.io.dataPorts
+  }
+}
+
+case class MDSMatrix(t: Int, dataWidth: Int) extends Component {
 
   val io = new Bundle {
-    val data_ports = Vec((out UInt (data_width bits)), t)
-    val address_port = in UInt (log2Up(t) bits)
+    val dataPorts = Vec((out UInt (dataWidth bits)), t)
+    val addressPort = in UInt (log2Up(t) bits)
   }
 
   val filename =
     "./poseidon_constants/mds_matrixs_ff/mds_matrix_ff_%d.txt"
-  val mds_matrix = get_matrix_from_file(t, t, filename.format(t))
-  val matrix_transpose = for (i <- 0 until t) yield mds_matrix.map(_(i))
-  val mds_roms =
+  val mdsMatrix = get_matrix_from_file(t, t, filename.format(t))
+  val matrixTranspose = for (i <- 0 until t) yield mdsMatrix.map(_(i))
+  val mdsRoms =
     for (i <- 0 until t)
       yield Mem(
-        UInt(data_width bits),
-        initialContent = matrix_transpose(i).map(U(_))
+        UInt(dataWidth bits),
+        initialContent = matrixTranspose(i).map(U(_))
       )
   for (i <- 0 until t) {
-    io.data_ports(i) := mds_roms(i).readAsync(io.address_port)
+    io.dataPorts(i) := mdsRoms(i).readAsync(io.addressPort)
   }
 
 }
 
 case class RoundConstantsConfig(
     t: Int,
-    round_num: Int,
-    ports_num: Int,
-    data_width: Int
+    roundNum: Int,
+    portsNum: Int,
+    dataWidth: Int
 )
 
-case class ReadPort(t_max: Int, round_max: Int, data_width: Int)
-    extends Bundle {
-  val data = out UInt (data_width bits)
-  val t_index = in UInt (log2Up(t_max) bits)
-  val round_index = in UInt (log2Up(round_max) bits)
+case class ReadPort(tMax: Int, roundMax: Int, dataWidth: Int) extends Bundle {
+  val data = out UInt (dataWidth bits)
+  val tIndex = in UInt (log2Up(tMax) bits)
+  val roundIndex = in UInt (log2Up(roundMax) bits)
 }
 
-class RoundConstants(config: RoundConstantsConfig) extends Component {
+case class RoundConstants(config: RoundConstantsConfig) extends Component {
   val io = new Bundle {
-    val read_ports = Vec(
-      ReadPort(config.t, config.round_num, config.data_width),
-      config.ports_num
+    val readPorts = Vec(
+      ReadPort(config.t, config.roundNum, config.dataWidth),
+      config.portsNum
     )
   }
   val filename =
     "./poseidon_constants/round_constants_ff/round_constants_ff_%d.txt"
-  val constants_matrix =
-    get_matrix_from_file(config.round_num, config.t, filename.format(config.t))
-  val matrix_transpose =
-    for (i <- 0 until config.t) yield constants_matrix.map(_(i))
-  val constants_roms =
+  val constantsMatrix =
+    get_matrix_from_file(config.roundNum, config.t, filename.format(config.t))
+  val matrixTranspose =
+    for (i <- 0 until config.t) yield constantsMatrix.map(_(i))
+  val constantsRoms =
     for (i <- 0 until config.t)
-      yield Mem(UInt(config.data_width bits), matrix_transpose(i).map(U(_)))
+      yield Mem(UInt(config.dataWidth bits), matrixTranspose(i).map(U(_)))
 
-  for (port <- io.read_ports) {
-    val data_vec = constants_roms.map(_.readAsync(port.round_index))
-    port.data := data_vec(port.t_index)
+  for (port <- io.readPorts) {
+    val dataVec = constantsRoms.map(_.readAsync(port.roundIndex))
+    port.data := dataVec(port.tIndex)
+  }
+}
+
+object RoundConstantsT3 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 3, roundNum = 63, portsNum = 1, dataWidth = 255)
+    RoundConstants(config)
+  }
+}
+
+object RoundConstantsT5 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 5, roundNum = 64, portsNum = 1, dataWidth = 255)
+    RoundConstants(config)
+  }
+}
+
+object RoundConstantsT9 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 9, roundNum = 65, portsNum = 1, dataWidth = 255)
+    RoundConstants(config)
+  }
+}
+
+object RoundConstantsT12 {
+  def apply(): RoundConstants = {
+    val config =
+      RoundConstantsConfig(t = 12, roundNum = 65, portsNum = 1, dataWidth = 255)
+    RoundConstants(config)
   }
 }
 
 object MDSMatrixVerilog {
   def main(args: Array[String]): Unit = {
-    SpinalVerilog(new MDSMatrix(t = 3, data_width = 256))
+    SpinalVerilog(MDSMatrix(t = 3, dataWidth = 256))
   }
 }
 
 object RoundConstantsVerilog {
   val myconfig =
-    RoundConstantsConfig(t = 3, round_num = 63, ports_num = 3, data_width = 255)
+    RoundConstantsConfig(t = 3, roundNum = 63, portsNum = 3, dataWidth = 255)
 
   def main(args: Array[String]): Unit = {
-    SpinalVerilog(new RoundConstants(myconfig))
+    SpinalVerilog(RoundConstants(myconfig))
   }
 }

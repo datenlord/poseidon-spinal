@@ -97,10 +97,10 @@ module ModMultiplier #(
     wire [2*DATA_WIDTH:0] mediate_res = {carry1,res1};
 
     // Dump waves
-    // initial begin
-    //     $dumpfile("dump.vcd");
-    //     $dumpvars(1, ModMultiplier);
-    // end
+    initial begin
+        $dumpfile("dump.vcd");
+        $dumpvars(1, ModMultiplier);
+    end
 
     
 endmodule

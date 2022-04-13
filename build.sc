@@ -6,6 +6,7 @@ val spinalVersion = "1.6.0"
 
 object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
   def scalaVersion = "2.13.6"
+  //def scalaVersion = "2.12.14"
 
   override def scalacOptions = Seq(
     //"-V", // Print a synopsis of verbose options.

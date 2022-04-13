@@ -30,167 +30,211 @@ case class AXI4Stream(data_width: Int) extends Bundle with IMasterSlave {
 case class PoseidonGenerics(
     t_max: Int,
     round_max: Int,
-    thread_num: Int,
+    loop_num: Int,
     data_width: Int,
-    id_width: Int
+    id_width: Int,
+    isSim: Boolean // indicate whether the generated codes are used for simulation
 )
+
 class BasicContext(g: PoseidonGenerics) extends Bundle {
   val round_index = UInt(log2Up(g.round_max) bits)
   val state_index = UInt(log2Up(g.t_max) bits)
   val state_size = UInt(log2Up(g.t_max) bits)
   val state_id = UInt(g.id_width bits)
 }
+
 class Context(g: PoseidonGenerics) extends BasicContext(g) {
   val state_element = UInt(g.data_width bits)
 }
 
-class DataLoopbackBuffer(g: PoseidonGenerics) extends Component {
+case class LoopbackDeMux(g: PoseidonGenerics) extends Component {
   val io = new Bundle {
     val input = slave Stream (MDSContext(g))
-    val outputs = Vec(master Stream (new Context(g)), g.thread_num)
-    val residue = out UInt (log2Up(g.t_max) bits)
+    val output0 = master Stream (MDSContext(g))
+    val output1 = master Stream (TransmitterContext(g))
+  }
+  val input = io.input
+
+  val select = False
+  val inputDemuxed = StreamDemux(input, select.asUInt, 2)
+  switch(input.state_size) {
+    is(3) {
+      select := input.round_index === 62
+    }
+    is(5) {
+      select := input.round_index === 63
+    }
+    is(9) {
+      select := input.round_index === 64
+    }
+    is(12) {
+      select := input.round_index === 64
+    }
   }
 
-  val buffer0 = Vec(Stream(new Context(g)), g.thread_num)
-  val buffer1 = Vec(Stream(new Context(g)), g.thread_num)
-  val buffer2 = Vec(Stream(new Context(g)), g.thread_num)
-  val buffer3 = Vec(Stream(new Context(g)), g.thread_num)
-
-  val inputs = Vec(Stream(new Context(g)), g.t_max)
-  for (i <- 0 until g.t_max) {
-    inputs(i).valid := io.input.valid
-    inputs(i).payload.assignSomeByName(io.input.payload)
-    inputs(i).state_index := i
-    inputs(i).state_element := io.input.state_elements(i)
+  io.output0 << inputDemuxed(0).translateWith {
+    val payload = MDSContext(g)
+    payload.assignSomeByName(inputDemuxed(0).payload)
+    payload.round_index.allowOverride
+    payload.round_index := inputDemuxed(0).round_index + 1
+    payload
   }
 
-  io.input.ready := inputs.map(_.ready).asBits().andR
+  io.output1 << inputDemuxed(1).translateWith {
+    val payload = TransmitterContext(g)
+    payload.state_element := inputDemuxed(1).state_elements(1)
+    payload.state_id := inputDemuxed(1).state_id
+    payload
+  }
+}
 
-  for (i <- 0 until g.thread_num) {
-    buffer0(i) << inputs(i).stage()
+object PoseidonLoop {
+  def apply(
+      g: PoseidonGenerics,
+      input: Stream[MDSContext]
+  ): Stream[TransmitterContext] = {
+    val loopInst = PoseidonLoop(g)
+    loopInst.io.input <-< input
+    loopInst.io.output
+  }
+}
 
-    buffer1(i) << StreamArbiterFactory.lowerFirst
-      .onArgs(buffer0(i), inputs(i + 3).throwWhen(io.input.state_size < 5))
-      .stage()
-    buffer2(i) << StreamArbiterFactory.lowerFirst
-      .onArgs(buffer1(i), inputs(i + 6).throwWhen(io.input.state_size < 9))
-      .stage()
-    buffer3(i) << StreamArbiterFactory.lowerFirst
-      .onArgs(buffer2(i), inputs(i + 9).throwWhen(io.input.state_size < 12))
-      .stage()
+case class PoseidonLoop(g: PoseidonGenerics) extends Component {
+
+  val io = new Bundle {
+    val input = slave Stream (MDSContext(g))
+    val output = master Stream (TransmitterContext(g))
   }
 
-  val buffers = Vec(Vec(Stream(new Context(g)), g.thread_num), 4)
-  (buffers(0) lazyZip buffer3).foreach(_ <-< _)
-  for (i <- 1 until 4) (buffers(i) lazyZip buffers(i - 1)).foreach(_ <-< _)
+  val loopback = Stream(MDSContext(g))
+  // serialize the parallel data from loopInput or loopback
 
-  io.residue := g.t_max
-  when(buffers(0).map(_.valid).andR) {
-    io.residue := 9
-  }
-  when(buffers(1).map(_.valid).andR) {
-    io.residue := 6
-  }
-  when(buffers(2).map(_.valid).andR) {
-    io.residue := 3
-  }
-  when(buffers(3).map(_.valid).andR) {
-    io.residue := 0
-  }
-
-  (io.outputs lazyZip buffers(3)).foreach(_ << _)
+  val dataMuxed = StreamArbiterFactory.lowerFirst.onArgs(loopback, io.input)
+  //
+  val serializerOutput = PoseidonSerializer(g, dataMuxed)
+  //
+  val threadOutput = PoseidonThread(g, serializerOutput)
+  //
+  val demuxInst = LoopbackDeMux(g)
+  demuxInst.io.input << threadOutput
+  loopback << demuxInst.io.output0.s2mPipe().m2sPipe()
+  io.output << demuxInst.io.output1.stage() // add a stage of register
 }
 
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
+
   val io = new Bundle {
     val input = slave(AXI4Stream(config.data_width))
     val output = master(AXI4Stream(config.data_width))
+    //val output = master Stream(TransmitterContext(config))
   }
 
-  val receiver = new AXI4StreamReceiver(config)
-  receiver.io.input.connectFrom(io.input)
+  ///////////////////////////////////
+  // val receiverOutput = AXI4StreamReceiver(config, io.input)
+  // val loopBacks = Vec(Stream(MDSContext(config)), config.loop_num)
+  // val loopbackMuxed = StreamArbiterFactory.lowerFirst.on(loopBacks)
 
-  val DataMux = new Area {
+  // val initialInput = StreamArbiterFactory.lowerFirst.onArgs(loopbackMuxed, receiverOutput)
 
-    val inputs0 = Vec(Stream(new Context(config)), config.thread_num)
-    val inputs1_temp = Vec(Stream(new Context(config)), config.thread_num)
-    (inputs1_temp lazyZip receiver.io.outputs).foreach(_ <-/< _)
-    val residue = UInt(log2Up(config.t_max) bits)
-    val inputs1 = inputs1_temp.map(
-      _.continueWhen(
-        (inputs1_temp(0).state_size - inputs1_temp(0).state_index) <= residue
-      )
+  // val loopInputs = Vec( Stream(MDSContext(config)), config.loop_num)
+  // val select = OHToUInt(OHMasking.first(loopInputs.map(_.ready)))
+  // (loopInputs lazyZip StreamDemux(initialInput, select, config.loop_num)).foreach(_<-/<_)
+
+  // val loopOutputs = for(i <- 0 until config.loop_num) yield PoseidonLoop(config, loopInputs(i), loopBacks(i))
+
+  // val transmitterInput = StreamArbiterFactory.lowerFirst.on(loopOutputs)
+  // //io.output.connectFrom( AXI4StreamTransmitter(config, 8, transmitterInput) )
+  // io.output << transmitterInput
+
+  ////////////////////////////////
+  val initialInput = AXI4StreamReceiver(config, io.input)
+
+  val loopInputs = Vec(Stream(MDSContext(config)), config.loop_num)
+  val select = OHToUInt(OHMasking.first(loopInputs.map(_.ready)))
+  (loopInputs lazyZip StreamDispatcherSequential(initialInput, config.loop_num))
+    .foreach(_ <-< _)
+
+  val loopOutputs =
+    for (i <- 0 until config.loop_num) yield PoseidonLoop(config, loopInputs(i))
+
+  val transmitterInput = StreamArbiterFactory.lowerFirst.on(loopOutputs)
+  io.output.connectFrom(
+    AXI4StreamTransmitter(config, 15, transmitterInput.stage())
+  )
+  //io.output << transmitterInput
+
+  // val receiverData = AXI4StreamReceiver(config, io.input) // 2
+  // val loopbackData = Stream(MDSContext(config))
+  // val dataMuxed = StreamArbiterFactory.lowerFirst.onArgs(loopbackData, receiverData)
+
+  // // serialize the parallel data from receiver or loopback
+  // val serializerOutput = PoseidonSerializer(config, dataMuxed) // 1
+
+  // //
+  // val threadOutput = PoseidonThread(config, serializerOutput) // 1+4
+
+  // val dataDemuxed = LoopbackDeMux(config)
+  // dataDemuxed.io.input << threadOutput
+
+  // loopbackData << dataDemuxed.io.output0.queue(8)
+  // io.output.connectFrom(AXI4StreamTransmitter(config, 12, dataDemuxed.io.output1))
+
+  // val DataDeMux = new Area{
+  //   val input = threadOutput
+
+  //   val select = False
+  //   val inputDemuxed = StreamDemux(input, select.asUInt, 2)
+  //   switch(input.state_size){
+  //     is(3){
+  //       select := input.round_index === 62
+  //     }
+  //     is(5){
+  //       select := input.round_index === 63
+  //     }
+  //     is(9){
+  //       select := input.round_index === 64
+  //     }
+  //     is(12){
+  //       select := input.round_index === 64
+  //     }
+  //   }
+
+  //   val output0 = inputDemuxed(0).translateWith{
+  //     val payload = MDSContext(config)
+  //     payload.assignSomeByName(inputDemuxed(0).payload)
+  //     payload.round_index.allowOverride
+  //     payload.round_index := inputDemuxed(0).round_index + 1
+  //     payload
+  //   }
+
+  //   val output1 = inputDemuxed(1).translateWith{
+  //     val payload = TransmitterContext(config)
+  //     payload.state_element := inputDemuxed(1).state_elements(1)
+  //     payload.state_id := inputDemuxed(1).state_id
+  //     payload
+  //   }
+  // }
+
+  // loopbackData << DataDeMux.output0.queue(8)
+  // io.output.connectFrom(AXI4StreamTransmitter(config, 12, DataDeMux.output1))
+}
+
+object LoopbackDeMuxVerilog {
+  def main(args: Array[String]): Unit = {
+    val config = PoseidonGenerics(
+      t_max = 12,
+      round_max = 65,
+      loop_num = 3,
+      data_width = 255,
+      id_width = 7,
+      isSim = true
     )
 
-    val outputs = Vec(Stream(new Context(config)), config.thread_num)
-    for (i <- 0 until config.thread_num) {
-      outputs(i) << StreamArbiterFactory.lowerFirst.onArgs(
-        inputs0(i),
-        inputs1(i)
-      )
-    }
+    SpinalConfig(
+      mode = Verilog,
+      targetDirectory = "./src/main/verilog/"
+    ).generate(LoopbackDeMux(config))
   }
-
-  val DataProcess = new Area {
-    val inputs = DataMux.outputs
-    val output = Stream(MDSContext(config))
-    val matrixAdder = new MDSMatrixAdders(config)
-    matrixAdder.io.output >> output
-    for (i <- 0 until config.thread_num) {
-      val thread = new PoseidonThread(config)
-      thread.io.input << inputs(i)
-      thread.io.output >> matrixAdder.io.inputs(i)
-    }
-  }
-
-  val DataDeMux = new Area {
-    val input = DataProcess.output
-    val output0 = Stream(TransmitterContext(config))
-    val output1 = Stream(MDSContext(config))
-
-    val select = Bits(2 bits)
-    output0.valid := input.valid & select(0)
-    output1.valid := input.valid & select(1)
-    input.ready := (output0.ready & select(0)) | (output1.ready & select(1))
-    output0.state_id := input.state_id
-    output0.state_element := input.state_elements(1)
-
-    output1.payload.assignSomeByName(input.payload)
-    output1.round_index.allowOverride
-    output1.round_index := input.round_index + 1
-
-    switch(input.state_size) {
-      is(3) {
-        select(0) := input.round_index === 62
-        select(1) := input.round_index < 62
-      }
-      is(5) {
-        select(0) := input.round_index === 63
-        select(1) := input.round_index < 63
-      }
-      is(9) {
-        select(0) := input.round_index === 64
-        select(1) := input.round_index < 64
-      }
-      is(12) {
-        select(0) := input.round_index === 64
-        select(1) := input.round_index < 64
-      }
-      default {
-        select := 0
-      }
-    }
-  }
-
-  val loopbackBuffer = new DataLoopbackBuffer(config)
-  loopbackBuffer.io.input << DataDeMux.output1
-  (DataMux.inputs0 lazyZip loopbackBuffer.io.outputs).foreach(_ << _)
-  DataMux.residue := loopbackBuffer.io.residue
-
-  val transmitter = new AXI4StreamTransmitter(config, buffer_depth = 6)
-  transmitter.io.input << DataDeMux.output0
-  io.output.connectFrom(transmitter.io.output)
-
 }
 
 object PoseidonTopLevelVerilog {
@@ -198,30 +242,15 @@ object PoseidonTopLevelVerilog {
     val config = PoseidonGenerics(
       t_max = 12,
       round_max = 65,
-      thread_num = 3,
+      loop_num = 3,
       data_width = 255,
-      id_width = 7
+      id_width = 7,
+      isSim = true
     )
 
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog/"
     ).generate(new PoseidonTopLevel(config))
-  }
-}
-
-object DataLoopbackBufferVerilog {
-  def main(args: Array[String]): Unit = {
-    val config = PoseidonGenerics(
-      t_max = 12,
-      round_max = 65,
-      thread_num = 3,
-      data_width = 255,
-      id_width = 4
-    )
-    SpinalConfig(
-      mode = Verilog,
-      targetDirectory = "./src/main/verilog"
-    ).generate(new DataLoopbackBuffer(config)).printPruned()
   }
 }

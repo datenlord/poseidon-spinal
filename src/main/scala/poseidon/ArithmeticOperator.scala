@@ -12,12 +12,30 @@ case class ModAdder() extends BlackBox {
   noIoPrefix()
 }
 
-case class operands(data_width: Int) extends Bundle {
-  val op1 = UInt(data_width bits)
-  val op2 = UInt(data_width bits)
+// standard io interface used in arithmetic operation Component
+object operands {
+  def apply(dataWidth: Int, op1: UInt, op2: UInt): operands = {
+    val inst = operands(dataWidth)
+    inst.op1 := op1
+    inst.op2 := op2
+    inst
+  }
 }
-case class results(data_width: Int) extends Bundle {
-  val res = UInt(data_width bits)
+case class operands(dataWidth: Int) extends Bundle {
+  val op1 = UInt(dataWidth bits)
+  val op2 = UInt(dataWidth bits)
+}
+
+object results {
+  def apply(dataWidth: Int, res: UInt): results = {
+    val inst = results(dataWidth)
+    inst.res := res
+    inst
+  }
+}
+
+case class results(dataWidth: Int) extends Bundle {
+  val res = UInt(dataWidth bits)
 }
 
 case class ModMultiplier() extends BlackBox {
