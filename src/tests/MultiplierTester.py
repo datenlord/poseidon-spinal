@@ -14,7 +14,7 @@ class MultiplierTester:
 
         self.width = mul_width
         self.dut = target
-        self.ref_outputs = Queue(maxsize = stages_num+5)  # store reference results
+        self.ref_outputs = Queue(maxsize=stages_num + 5)  # store reference results
 
     async def reset_dut(self):
         dut = self.dut
@@ -28,8 +28,8 @@ class MultiplierTester:
 
     def get_random_values(self):
         rand_valid = random.random() > 0.1
-        rand_op1 = random.randint(0, pow(2, self.width)-1)
-        rand_op2 = random.randint(0, pow(2, self.width)-1)
+        rand_op1 = random.randint(0, pow(2, self.width) - 1)
+        rand_op2 = random.randint(0, pow(2, self.width) - 1)
         return rand_valid, rand_op1, rand_op2
 
     async def generate_input(self):
@@ -47,9 +47,7 @@ class MultiplierTester:
             await RisingEdge(dut.clk)
             if dut.io_input_valid.value & dut.io_input_ready.value:
                 cases_count += 1
-                self.ref_outputs.put(
-                    [op1, op2, op1*op2]
-                )
+                self.ref_outputs.put([op1, op2, op1 * op2])
 
         dut.io_input_valid.value = False
 

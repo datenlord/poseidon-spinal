@@ -26,7 +26,7 @@ class MontMultiplierPipedTester:
         dut.reset.value = 0
 
     def get_random_values(self):
-        rand_valid = True#random.random() > 0.3
+        rand_valid = True  # random.random() > 0.3
         rand_op1 = ff.PrimeField(random.randint(0, ff.P - 1))
         rand_op2 = ff.PrimeField(random.randint(0, ff.P - 1))
         return rand_valid, rand_op1, rand_op2
@@ -58,7 +58,7 @@ class MontMultiplierPipedTester:
         cases_count = 0
         while cases_count < CASES_NUM:
 
-            ready = True#random.random() > 0.3
+            ready = True  # random.random() > 0.3
             dut.io_output_ready.value = ready
             await RisingEdge(dut.clk)
             if dut.io_output_ready.value & dut.io_output_valid.value == True:

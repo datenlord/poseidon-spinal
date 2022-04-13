@@ -106,7 +106,7 @@ class AXI4StreamTransmitter(g: PoseidonGenerics, bufferDepth: Int)
 
   val loopback = Stream(TransmitterContext(g))
   val temp = StreamArbiterFactory.lowerFirst.onArgs(io.input, loopback).stage()
-  val demuxOutputs = StreamDemux(temp,(temp.state_id === idCounter).asUInt,2)
+  val demuxOutputs = StreamDemux(temp, (temp.state_id === idCounter).asUInt, 2)
   io.output.last := True
   io.output.valid := demuxOutputs(1).valid
   demuxOutputs(1).ready := io.output.ready

@@ -158,7 +158,9 @@ class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
     for (i <- 0 until config.loop_num) yield PoseidonLoop(config, loopInputs(i))
 
   val transmitterInput = StreamArbiterFactory.lowerFirst.on(loopOutputs)
-  io.output.connectFrom(AXI4StreamTransmitter(config, 15, transmitterInput.stage()))
+  io.output.connectFrom(
+    AXI4StreamTransmitter(config, 15, transmitterInput.stage())
+  )
   //io.output << transmitterInput
 
   // val receiverData = AXI4StreamReceiver(config, io.input) // 2

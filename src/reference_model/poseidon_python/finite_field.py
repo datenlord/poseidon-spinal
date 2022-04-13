@@ -164,6 +164,3 @@ def testexp():
     assert p1.fromMont() == pow(a, 8) % p1.N, "the result of p1.expassign(8) is wrong."
 
     logging.debug("pass exp test!!")
-
-
-

@@ -279,10 +279,13 @@ case class MontMultiplierPipedSim2(g: MontMultiplierConfig) extends Component {
   val preComputation = new Area {
     val initialContext = MultiplierContextSim2(g.dataWidth)
     val temp0 = (io.input.op1 * io.input.op2).resize(g.dataWidth)
-    val inverse = BigInt("3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",16)
+    val inverse = BigInt(
+      "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
+      16
+    )
     val temp1 = (temp0 * U(inverse, g.dataWidth bits)).resize(g.dataWidth)
     val temp2 = (io.input.op1 * io.input.op2 +^ temp1 * g.modulus)
-    initialContext.res := ((temp2|>>g.dataWidth) % g.modulus).resized
+    initialContext.res := ((temp2 |>> g.dataWidth) % g.modulus).resized
     initialContext.counter := 0
     val output = io.input.translateWith(initialContext).stage()
   }

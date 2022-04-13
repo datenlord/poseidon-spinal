@@ -2,7 +2,7 @@
 
 set -o errexit
 set -o nounset
-#set -o xtrace
+set -o xtrace
 
 Components=("ModAdder" "ModMultiplier" "SBox5" "MDSMatrixMultiplier" "PoseidonThread" "MDSMatrixAdders" "AXI4StreamReceiver" "AXI4StreamTransmitter" "DataLoopbackBuffer" "PoseidonTopLevel" "PoseidonSerializer")
 
@@ -41,8 +41,8 @@ function build_and_test()
     then
         echo -e "Building ${component} ... \n"
         
-        docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 mill poseidon.runMain poseidon.${object}
-        #docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
+        #docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 mill poseidon.runMain poseidon.${object}
+        docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
     fi
 
     echo -e "Compile And Build ${component} successfully !!!\n"
@@ -54,8 +54,8 @@ function build_and_test()
         mv ./src/main/verilog/*.bin ./src/tests/
     fi
 
-    #docker run --rm -v $(pwd):$(pwd) -w $(pwd)/src/tests/ -u root datenlord/spinal-cocotb:1.6.1 make DUT=${component}
-    docker exec -w /spinalworkspace/poseidon-spinal/src/tests/ spinalhdl02 make DUT=${component}
+    docker run --rm -v $(pwd):$(pwd) -w $(pwd)/src/tests/ -u root datenlord/spinal-cocotb:1.6.1 make DUT=${component}
+    #docker exec -w /spinalworkspace/poseidon-spinal/src/tests/ spinalhdl02 make DUT=${component}
     
     rm -f ./src/tests/*.bin
     if [[ $component != ${Components[0]} && $component != ${Components[1]} ]] 
