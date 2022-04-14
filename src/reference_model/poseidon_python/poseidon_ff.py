@@ -1,4 +1,3 @@
-from filecmp import cmp
 import random
 import basic
 import finite_field as ff
@@ -212,20 +211,7 @@ def poseidon_hash_opt(preimage):
     return state_ff[1].fromMont()
 
 
-def read_constants_files(arity, path):
-    """read constants used in optimized poseidon"""
-    assert arity in basic.T_RANGE, "illegal parameter"
-    # read compressed round constants from file
-    file_path = (
-        path + f"/compressed_round_constants/compressed_round_constants_{arity}.txt"
-    )
-    file = open(file_path, mode="r")
-    cmp_round_constants = file.readlines()
-    for i in range(len(cmp_round_constants)):
-        cmp_round_constants[i] = int(cmp_round_constants[i], 16)
-    file.close()
-
-    # read pre sparse matrix from file
+def read_pre_sparse_matrix(arity, path):
     file_path = path + f"/pre_sparse_matrix/pre_sparse_matrix_{arity}.txt"
     file = open(file_path, mode="r")
     pre_sparse_elements = file.readlines()
@@ -235,8 +221,11 @@ def read_constants_files(arity, path):
         for j in range(arity):
             pre_sparse_vec.append(int(pre_sparse_elements[i * arity + j], 16))
         pre_sparse_matrix.append(pre_sparse_vec)
+    file.close()
+    return pre_sparse_matrix
 
-    # read sparse matrix from file
+
+def read_sparse_matrix(arity, path):
     file_path = path + f"/sparse_matrix/sparse_matrix_{arity}.txt"
     file = open(file_path, mode="r")
     sparse_matrix_elements = file.readlines()
@@ -255,6 +244,28 @@ def read_constants_files(arity, path):
                 v_vec.append(element)
         w_hat.append(w_vec)
         v_rest.append(v_vec)
+    file.close()
+    return w_hat, v_rest
+
+
+def read_constants_files(arity, path):
+    """read constants used in optimized poseidon"""
+    assert arity in basic.T_RANGE, "illegal parameter"
+    # read compressed round constants from file
+    file_path = (
+        path + f"/compressed_round_constants/compressed_round_constants_{arity}.txt"
+    )
+    file = open(file_path, mode="r")
+    cmp_round_constants = file.readlines()
+    for i in range(len(cmp_round_constants)):
+        cmp_round_constants[i] = int(cmp_round_constants[i], 16)
+    file.close()
+
+    # read pre sparse matrix from file
+    pre_sparse_matrix = read_pre_sparse_matrix(arity, path)
+
+    # read sparse matrix from file
+    w_hat, v_rest = read_sparse_matrix(arity, path)
 
     return cmp_round_constants, pre_sparse_matrix, w_hat, v_rest
 
@@ -349,7 +360,8 @@ def output_mds_matrix_ff():
         fileobject = open("mds_matrix_ff_{}.txt".format(t), "w")
         for mds_vec in mds_matrix_ff:
             for element in mds_vec:
-                fileobject.write(str(element.value) + "\n")
+                output_str = hex(element.value)
+                fileobject.write(output_str[2:] + "\n")
 
         fileobject.close()
 
@@ -364,27 +376,106 @@ def output_round_constants_ff():
             constants.generate_constants(t, basic.ROUNDFULL, basic.ROUNDPARTIAL[t])
         )
         for element in round_constants:
-            fileobject.write(hex(element.value) + "\n")
+            output_str = hex(element.value)
+            fileobject.write(output_str[2:] + "\n")
         fileobject.close()
 
 
-# print_random_cases(1,9)
+def output_pre_sparse_matrix_ff():
+    """get pre sparse matrix in Montgomery domain and write to files"""
+    os.mkdir("./poseidon_constants/pre_sparse_matrix_ff")
+    os.chdir("./poseidon_constants/pre_sparse_matrix_ff")
 
-# print(hex(poseidon_hash([0,1,2,3,4,5,6,7])))
+    for t in basic.T_RANGE:
+        src_file = open(f"../pre_sparse_matrix/pre_sparse_matrix_{t}.txt", "r")
+        dest_file = open(f"pre_sparse_matrix_ff_{t}.txt", "w")
+        pre_sparse_elements = src_file.readlines()
+        for element in pre_sparse_elements:
+            element = ff.PrimeField(int(element, 16))
+            output_str = hex(element.value)
+            dest_file.write(output_str[2:] + "\n")
+        dest_file.close()
 
-# output_round_constants_ff()
 
-# write_random_cases(20000, 9)
-# poseidon_hash_opt([0,1])
+def output_sparse_matrix_ff():
+    os.mkdir("./poseidon_constants/sparse_matrix_ff")
+    os.chdir("./poseidon_constants/sparse_matrix_ff")
+    for t in basic.T_RANGE:
+        src_file = open(f"../sparse_matrix/sparse_matrix_{t}.txt", "r")
+        sparse_elements = src_file.readlines()
+        if t <= 5:
+            dest_file = open(f"sparse_matrix_ff_{t}.txt", "w")
+            for i in range(basic.ROUNDPARTIAL[t]):
+                element = ff.PrimeField(int(sparse_elements[i * (2 * t - 1)], 16))
+                output_str = hex(element.value)
+                dest_file.write(output_str[2:] + "\n")
+                for j in range(t, 2 * t - 1):
+                    element = ff.PrimeField(
+                        int(sparse_elements[i * (2 * t - 1) + j], 16)
+                    )
+                    output_str = hex(element.value)
+                    dest_file.write(output_str[2:] + "\n")
+                for j in range(1, t):
+                    element = ff.PrimeField(
+                        int(sparse_elements[i * (2 * t - 1) + j], 16)
+                    )
+                    output_str = hex(element.value)
+                    dest_file.write(output_str[2:] + "\n")
+            dest_file.close()
 
-# a,b,c,d = read_constants_files(12,"./poseidon_constants")
+        else:
+            what_file = open(f"sparse_matrix_column_ff_{t}.txt", "w")
+            vrest_file = open(f"sparse_matrix_row_ff_{t}.txt", "w")
+            vec_len = 2 * t - 1
+            for i in range(len(sparse_elements)):
+                element = ff.PrimeField(int(sparse_elements[i], 16))
+                output_str = hex(element.value)
+                if i % vec_len == 0:
+                    what_file.write(output_str[2:] + "\n")
+                    vrest_file.write(output_str[2:] + "\n")
+                elif i % vec_len < t:
+                    what_file.write(output_str[2:] + "\n")
+                else:
+                    vrest_file.write(output_str[2:] + "\n")
+            what_file.close()
+            vrest_file.close()
 
-# for i in range(2):
-#     print(a[i])
-#     print(b[0][i])
-#     print(c[0][i])
-#     print(d[0][i])
 
-preimage = [10000, 1, 2000000, 3, 4, 50, 6, 7, 80, 9, 11]
-print(hex(poseidon_hash_opt(preimage)))
-print(hex(poseidon_hash(preimage)))
+def output_compressed_round_constants():
+    """get compressed round constants in Montgomery domain and write to files"""
+    os.mkdir("./poseidon_constants/compressed_round_constants_ff")
+    os.chdir("./poseidon_constants/compressed_round_constants_ff")
+
+    for t in basic.T_RANGE:
+        Rf = int((basic.ROUNDFULL) / 2)
+        roundp = basic.ROUNDPARTIAL[t]
+
+        src_file = open(
+            f"../compressed_round_constants/compressed_round_constants_{t}.txt", "r"
+        )
+        constants_elements = src_file.readlines()
+        dest_file1 = open(f"pre_round_constants_ff_{t}.txt", "w")
+        dest_file2 = open(f"full_round_constants_ff_{t}.txt", "w")
+        dest_file3 = open(f"partial_round_constants_ff_{t}.txt", "w")
+        for i in range(len(constants_elements)):
+            element = ff.PrimeField(int(constants_elements[i], 16))
+            output_str = hex(element.value)
+            if i < t:
+                dest_file1.write(output_str[2:] + "\n")
+            elif i < (Rf + 1) * t:
+                dest_file2.write(output_str[2:] + "\n")
+            elif i < ((Rf + 1) * t + roundp):
+                dest_file3.write(output_str[2:] + "\n")
+            else:
+                dest_file2.write(output_str[2:] + "\n")
+
+        for i in range(t):
+            dest_file2.write("0" * 64 + "\n")
+
+        dest_file1.close()
+        dest_file2.close()
+        dest_file3.close()
+
+
+# print(poseidon_hash([0,1,2,3]))
+# print(poseidon_hash_opt([0,1,2,3]))

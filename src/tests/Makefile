@@ -73,6 +73,10 @@ ifeq ($(DUT), MultiplierIPFlow)
 	MODULE = MultiplierFlowTester
 endif
 
+ifeq ($(DUT), ModAdderPiped)
+	MODULE = ModularAdderFlowTester
+endif
+
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
