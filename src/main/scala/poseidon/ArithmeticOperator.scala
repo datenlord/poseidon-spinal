@@ -20,6 +20,13 @@ object operands {
     inst.op2 := op2
     inst
   }
+
+  def apply(op1: UInt, op2: UInt): operands = {
+    val inst = operands(widthOf(op1))
+    inst.op1 := op1
+    inst.op2 := op2
+    inst
+  }
 }
 case class operands(dataWidth: Int) extends Bundle {
   val op1 = UInt(dataWidth bits)
@@ -29,6 +36,12 @@ case class operands(dataWidth: Int) extends Bundle {
 object results {
   def apply(dataWidth: Int, res: UInt): results = {
     val inst = results(dataWidth)
+    inst.res := res
+    inst
+  }
+
+  def apply(res: UInt): results = {
+    val inst = results(widthOf(res))
     inst.res := res
     inst
   }

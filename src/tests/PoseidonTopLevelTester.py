@@ -9,14 +9,14 @@ from poseidon_python import poseidon_ff, basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 500
+CASES_NUM = 10
 
 
 class PoseidonTopLevelTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_inputs = Queue(maxsize=100)
-        self.ref_outputs = Queue(maxsize=100)
+        self.ref_inputs = Queue(maxsize=500)
+        self.ref_outputs = Queue(maxsize=500)
 
     async def reset_dut(self):
         """reset the dut"""
@@ -60,7 +60,7 @@ class PoseidonTopLevelTester:
             print("input case {}".format(cases_count))
             cases_count += 1
             self.ref_inputs.put(state_elements)
-            self.ref_outputs.put(poseidon_ff.poseidon_hash_ff(state_elements))
+            self.ref_outputs.put(poseidon_ff.poseidon_hash_opt_ff(state_elements))
 
         self.dut.io_input_valid.value = False
 
@@ -115,38 +115,62 @@ async def PoseidonTopLevelTest(dut):
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())
     # rindex = [0,0,0,0]
+    round_max = -1
+    cycle = 0
     while True:
         await RisingEdge(dut.clk)
+
+        cycle = cycle + 1
+        loop = dut.poseidonLoop_1
+        thread = loop.poseidonThread_1
+        # # if(loop.modAdderPipedFlow_1_io_output_valid.value):
+        # #     print(hex(int(loop.modAdderPipedFlow_1_io_output_payload_res.value)))
+
         if (
-            dut.aXI4StreamTransmitter_1_io_input_ready.value
-            & dut.poseidonLoop_1_io_output_m2sPipe_valid.value
+            loop.streamArbiter_2_io_output_valid.value
+            & loop.poseidonSerializer_1_io_input_ready.value
         ):
-            print("state id:")
-            print(dut.poseidonLoop_1_io_output_m2sPipe_payload_state_id.value)
-        # if (
-        #     dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
-        #     & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value
-        # ) == True:
-        #     round_index = int(
-        #         dut.poseidonLoop_3.streamArbiter_49_io_output_payload_round_index.value
-        #     )
-        #     state_id = int(
-        #         dut.poseidonLoop_3.streamArbiter_49_io_output_payload_state_id.value
-        #     )
-        #     print("Thread0: ")
-        #     print(f"state_id: {state_id}")
-        #     print(f"round_index: {round_index}")
+            roundp = (
+                int(loop.streamArbiter_2_io_output_payload_fullRound.value)
+                + int(loop.streamArbiter_2_io_output_payload_partialRound.value) % 63
+            )
+            if roundp > round_max:
+                round_max = roundp
+                print("ID: ", int(loop.streamArbiter_2_io_output_payload_stateID.value))
+                print(
+                    "isFull: ",
+                    bool(loop.streamArbiter_2_io_output_payload_isFull.value),
+                )
+                print(
+                    "fullRound: ",
+                    int(loop.streamArbiter_2_io_output_payload_fullRound.value),
+                )
+                print(
+                    "partialRound: ",
+                    int(loop.streamArbiter_2_io_output_payload_partialRound.value),
+                )
 
+                # print("element0", hex(int(loop.streamArbiter_2_io_output_payload_stateElements_0.value)))
+                # print("element1", hex(int(loop.streamArbiter_2_io_output_payload_stateElements_1.value)))
+                # print("element2", hex(int(loop.streamArbiter_2_io_output_payload_stateElements_2.value)))
+        # file.write(f"cycle: {cycle}\n")
+        # if(thread.mDSMatrixMultiplier_1_io_output_valid.value):
+        #     file.write("input:  ")
+        #     file.write(f"ID:{int(thread.mDSMatrixMultiplier_1_io_output_payload_stateID.value)}  ")
+        #     file.write(f"isFull:{bool(thread.mDSMatrixMultiplier_1_io_output_payload_isFull.value)}  ")
+        #     file.write(f"fullRound:{int(thread.mDSMatrixMultiplier_1_io_output_payload_fullRound.value)}  ")
+        #     file.write(f"partialRound:{int(thread.mDSMatrixMultiplier_1_io_output_payload_partialRound.value)}\n")
 
-# pytest
-def test_PoseidonTopLevel():
-    simulator.run(
-        verilog_sources=[
-            "../main/verilog/PoseidonTopLevel.v",
-            "../main/verilog/MontMultiplierBasics.v",
-            "../main/verilog/ModAdder.v",
-        ],
-        toplevel="PoseidonTopLevel",
-        module="PoseidonTopLevelTester",
-        python_search="./src/reference_model/",
-    )
+        # if(thread.mDSMatrixAdders_1_io_output_valid.value):
+        #     file.write("output:  ")
+        #     file.write(f"ID:{int(thread.mDSMatrixAdders_1_io_output_payload_stateID.value)}  ")
+        #     file.write(f"isFull:{bool(thread.mDSMatrixAdders_1_io_output_payload_isFull.value)}  ")
+        #     file.write(f"fullRound:{int(thread.mDSMatrixAdders_1_io_output_payload_fullRound.value)}  ")
+        #     file.write(f"partialRound:{int(thread.mDSMatrixAdders_1_io_output_payload_partialRound.value)}\n")
+
+        # file.write("\n")
+
+        # if(loop.poseidonThread_1_io_output_valid.value):
+        #     print("element: ", hex(int(loop.poseidonThread_1_io_output_payload_stateElements_0.value)))
+        #     print("element: ", hex(int(loop.poseidonThread_1_io_output_payload_stateElements_1.value)))
+        #     print("element1: ", hex(int(loop.poseidonThread_1_io_output_payload_stateElements_2.value)))

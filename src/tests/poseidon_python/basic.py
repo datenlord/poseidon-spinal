@@ -94,6 +94,7 @@ class PrimeFieldOps:
             fileobject = open("mds_matrix_{}.txt".format(t), "w")
             for mds_vec in mds_matrix:
                 for element in mds_vec:
-                    fileobject.write(str(element) + "\n")
+                    output_str = hex(element)
+                    fileobject.write(output_str[2:] + "\n")
 
             fileobject.close()
