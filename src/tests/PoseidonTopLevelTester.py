@@ -7,7 +7,6 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic
 
-from cocotb_test import simulator
 
 CASES_NUM = 10
 

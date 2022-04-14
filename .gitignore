@@ -2,6 +2,7 @@
 *.log
 *.bak
 *.xml
+*.bin
 
 # python
 __pycache__
@@ -49,3 +50,4 @@ bin/
 simWorkspace/
 tmp/
 null
+
