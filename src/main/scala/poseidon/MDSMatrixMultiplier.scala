@@ -19,10 +19,11 @@ case class MDSMulContext(g: PoseidonGenerics) extends Bundle {
 object MDSMatrixMultiplier {
   def apply(
       g: PoseidonGenerics,
-      mulConfig: MontMultiplierConfig,
-      input: Stream[ContextCase]
-  ): Stream[MDSContext] = {
-    val MDSMultiplierInst = new MDSMatrixMultiplier(g, mulConfig)
+      mulConfig: MontMultConfig,
+      ipConfig: MulIPConfig,
+      input: Flow[ContextCase]
+  ): Flow[MDSContext] = {
+    val MDSMultiplierInst = new MDSMatrixMultiplier(g, mulConfig, ipConfig)
     MDSMultiplierInst.io.input << input
     MDSMultiplierInst.io.output
   }
@@ -30,12 +31,13 @@ object MDSMatrixMultiplier {
 
 case class MDSMatrixMultiplier(
     g: PoseidonGenerics,
-    mulConfig: MontMultiplierConfig
+    mulConfig: MontMultConfig,
+    ipConfig: MulIPConfig
 ) extends Component {
 
   val io = new Bundle {
-    val input = slave Stream (ContextCase(g))
-    val output = master Stream (MDSContext(g))
+    val input = slave Flow (ContextCase(g))
+    val output = master Flow (MDSContext(g))
   }
 
   // mds_matrix_rom
@@ -52,104 +54,92 @@ case class MDSMatrixMultiplier(
   // mdsMatrix_t9.io.address_port  := io.input.state_index.resized
   // mdsMatrix_t12.io.address_port := io.input.state_index.resized
 
-  val mulOp2s = Vec(UInt(g.data_width bits), g.t_max)
+  val mdsConstants = Vec(UInt(g.data_width bits), g.t_max)
   switch(io.input.state_size) {
     is(3) {
-      mulOp2s.assignFromBits(
+      mdsConstants.assignFromBits(
         B(0, (g.t_max - 3) * g.data_width bits) ## mdsMatrix_t3.asBits
       )
     }
     is(5) {
       when(io.input.state_index === 5) {
-        mulOp2s.assignFromBits(B(0, g.t_max * g.data_width bits))
+        mdsConstants.assignFromBits(B(0, g.t_max * g.data_width bits))
       } otherwise {
-        mulOp2s.assignFromBits(
+        mdsConstants.assignFromBits(
           B(0, (g.t_max - 5) * g.data_width bits) ## mdsMatrix_t5.asBits
         )
       }
     }
     is(9) {
-      mulOp2s.assignFromBits(
+      mdsConstants.assignFromBits(
         B(0, (g.t_max - 9) * g.data_width bits) ## mdsMatrix_t9.asBits
       )
     }
     is(12) {
-      mulOp2s.assignFromBits(mdsMatrix_t12.asBits)
+      mdsConstants.assignFromBits(mdsMatrix_t12.asBits)
     }
     default {
-      mulOp2s.assignFromBits(B(0, g.t_max * g.data_width bits))
+      mdsConstants.assignFromBits(B(0, g.t_max * g.data_width bits))
     }
   }
 
-  val inputForked = StreamFork(io.input, 2, true)
+  val mulInputs = for (i <- 0 until g.t_max) yield io.input.translateWith {
+    operands(g.data_width, io.input.state_element, mdsConstants(i))
+  }
 
-  val mulOp1s = StreamFork(
-    inputForked(0).translateWith(io.input.state_element),
-    g.t_max,
-    true
-  )
+  //val mulOutputs = mulInputs.map(MontgomeryMultStream(mulConfig, ipConfig, _))
+  val mulOutputs = mulInputs.map(MontgomeryMultFlow(mulConfig, ipConfig, _))
 
-  val mulInputs =
-    for (i <- 0 until g.t_max)
-      yield mulOp1s(i).translateWith {
-        val payload = operands(g.data_width)
-        payload.op1 := mulOp1s(i).payload
-        payload.op2 := mulOp2s(i)
-        payload
-      }
+  val mulContext = MDSMulContext(g)
+  mulContext.assignSomeByName(io.input.payload)
+  val mulContextDelayed = Delay(mulContext, mulOutputs(0)._2)
 
-  val mulOutputs =
-    if (g.isSim) {
-      mulInputs.map(MontMultiplierPipedSim(mulConfig, _))
-    } else {
-      mulInputs.map(MontMultiplierPiped(mulConfig, _))
-    }
+  // val mulResJoined = StreamJoin(mulOutputs)
 
-  val mulContext = inputForked(1)
-    .translateWith {
-      val payload = MDSMulContext(g)
-      payload.assignSomeByName(io.input.payload)
-      payload
-    }
-    .queue(8)
-
-  val mulResJoined = StreamJoin(mulOutputs)
-  io.output << StreamJoin
-    .arg(mulResJoined, mulContext)
-    .translateWith {
-      val payload = MDSContext(g)
-      payload.assignSomeByName(mulContext.payload)
-      payload.state_elements.assignFromBits(mulOutputs.map(_.res).asBits())
-      payload
-    }
-    .stage()
-
+  io.output.valid := mulOutputs.map(_._1.valid).asBits().andR
+  io.output.payload.assignSomeByName(mulContextDelayed)
+  io.output.payload.state_elements
+    .assignFromBits(mulOutputs.map(_._1.res).asBits())
 }
 
 object MDSMatrixMultiplierVerilog {
   def main(args: Array[String]): Unit = {
-    val config = PoseidonGenerics(
+    val poseidonConfig = PoseidonGenerics(
       t_max = 12,
       round_max = 65,
       loop_num = 5,
       data_width = 255,
-      id_width = 4,
+      id_width = 8,
       isSim = true
     )
 
     val modulus = BigInt(
       "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
-      radix = 16
+      16
+    )
+    val modInverse = BigInt(
+      "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
+      16
     )
     val compensation = BigInt(
       "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
-      radix = 16
+      16
     )
-    val mulConfig = MontMultiplierConfig(modulus, compensation, 255)
+    val montMultConfig =
+      MontMultConfig(255, 256, modulus, modInverse, compensation, true)
+
+    val mulIPConfig = MulIPConfig(
+      inputWidth = 34,
+      outputWidth = 68,
+      isCE = false,
+      isSCLR = false,
+      pipeStages = 6,
+      moduleName = "mult_gen_0"
+    )
 
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog/"
-    ).generate(new MDSMatrixMultiplier(config, mulConfig)).printPruned()
+    ).generate(MDSMatrixMultiplier(poseidonConfig, montMultConfig, mulIPConfig))
   }
 }

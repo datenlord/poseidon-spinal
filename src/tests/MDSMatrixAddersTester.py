@@ -9,13 +9,16 @@ from poseidon_python import basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 500  # the number of test cases
+from BasicElements import MDSContext
+
+CASES_NUM = 2000  # the number of test cases
 
 
 class MDSMatrixAddersTester:
     def __init__(self, target) -> None:
         self.dut = target
-        self.ref_outputs = Queue(maxsize=20)  # store reference results
+        self.id_width = 8  # the width of state_id used in MDSMatrixAdders
+        self.ref_outputs = Queue(maxsize=30)  # store reference results
 
     async def reset_dut(self):
         dut = self.dut
@@ -27,120 +30,79 @@ class MDSMatrixAddersTester:
 
         dut.reset.value = 0
 
-    def get_random_input(self):
-        size_range = [3, 5, 9, 12]
-        rand_size = size_range[random.randint(0, 3)]
-        rand_matrix = []
-
-        for i in range(rand_size):
-            rand_vec = []
-            for j in range(12):
-                if j < rand_size:
-                    rand_vec.append(random.randint(0, basic.P - 1))
-                else:
-                    rand_vec.append(0)
-            rand_matrix.append(rand_vec)
-
-        if rand_size == 5:
-            rand_matrix.append(12 * [0])
-        return rand_size, rand_matrix
-
-    def set_input_ports(self, values):
-        for j in range(12):
-            exec(f"self.dut.io_input_payload_state_elements_{j}.value = values[{j}]")
-
-    def check_ports(self, ref_res):
-        dut_res = []
-
-        for i in range(12):
-            exec(
-                f"dut_res.append(self.dut.io_output_payload_state_elements_{i}.value.integer)"
-            )
-
-        for i in range(12):
-            if dut_res[i] != ref_res[i]:
-                return False, dut_res
-        return True, dut_res
-
     async def drive_input_ports(self):
         """drive input ports"""
-
         dut = self.dut
+        await RisingEdge(dut.clk)
+
         cases_count = 0
         while cases_count < CASES_NUM:
-            # get random values
-            size, matrix = self.get_random_input()
+            # get random input
+            context_vec = MDSContext.get_context_vec()
 
-            for row in matrix:
-                dut.io_input_valid.value = random.random() > 0.2
-                dut.io_input_payload_state_size.value = size
-                self.set_input_ports(row)
+            for element in context_vec:
+                dut.io_input_valid.value = random.random() > 0.3
+                element.set_dut_ports(dut)
 
                 await RisingEdge(dut.clk)
-                while (dut.io_input_valid.value & dut.io_input_ready.value) == False:
+                while (dut.io_input_valid.value) == False:
                     dut.io_input_valid.value = random.random() > 0.2
                     await RisingEdge(dut.clk)
 
             # calculate and push the reference outputs
-            ref_res = [0] * 12
-            for i in range(size):
-                for j in range(12):
-                    ref_res[j] = basic.PrimeFieldOps.add(ref_res[j], matrix[i][j])
+            for i in range(1, len(context_vec)):
+                for j in range(MDSContext.elements_num):
+                    context_vec[0].state_elements[j].addassign(
+                        context_vec[i].state_elements[j]
+                    )
 
-            self.ref_outputs.put([size, ref_res])
+            self.ref_outputs.put(context_vec[0])
 
             cases_count += 1
 
         dut.io_input_valid.value = False
 
-    async def check_output_ports(self):
+    async def monitor_output_ports(self):
         """check output signals"""
         dut = self.dut
         cases_count = 0
 
         while cases_count < CASES_NUM:
             await RisingEdge(dut.clk)
-            # get random ready signals
-            ready = random.random() > 0.3
-            dut.io_output_ready.value = ready
 
-            if (dut.io_output_ready.value & dut.io_output_valid.value) == True:
+            if (dut.io_output_valid.value) == True:
+                # get reference output
+                ref_context = self.ref_outputs.get()
+
+                # get dut outputs
+                dut_context = MDSContext()
+                dut_context.get_dut_ports(dut)
+                if not dut_context.check_context_equal(ref_context):
+                    print("REF:")
+                    ref_context.print_context_info()
+                    print("DUT:")
+                    dut_context.print_context_info()
+                    raise TestFailure(f"test case {cases_count} failed: ")
 
                 cases_count += 1
-                size, ref_res = self.ref_outputs.get()
-
-                passed, dut_res = self.check_ports(ref_res)
-                if not passed:
-                    print(f"failed info: case_num:{cases_count} input size:{size}")
-                    print("ref output:")
-                    for element in ref_res:
-                        print(hex(element))
-                    print("dut output:")
-                    for element in dut_res:
-                        print(hex(element))
-                    raise TestFailure(f"test case {cases_count} failed: ")
 
         raise TestSuccess(f" pass {CASES_NUM} test cases")
 
 
-@cocotb.test(timeout_time=100000, timeout_unit="ns")
+@cocotb.test(timeout_time=500000, timeout_unit="ns")
 async def MDSMatrixAddersTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
     tester = MDSMatrixAddersTester(dut)
 
     # set default values to all dut input ports
-    tester.set_input_ports([0] * 12)
-    dut.io_input_valid.value = False
-    dut.io_input_payload_round_index.value = 0
-    dut.io_input_payload_state_size.value = 0
-    dut.io_input_payload_state_id.value = 0
-    dut.io_output_ready.value = False
+    initial_context = MDSContext()
+    initial_context.set_dut_ports(dut)
 
     # start testing
     await tester.reset_dut()
     await cocotb.start(tester.drive_input_ports())
-    await cocotb.start(tester.check_output_ports())
+    await cocotb.start(tester.monitor_output_ports())
 
     while True:
         await RisingEdge(dut.clk)

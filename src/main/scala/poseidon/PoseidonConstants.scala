@@ -56,7 +56,8 @@ case class RoundConstantsConfig(
     t: Int,
     roundNum: Int,
     portsNum: Int,
-    dataWidth: Int
+    dataWidth: Int,
+    memType: Boolean // memType=true: distributed memory memTpye=false: block ram
 )
 
 case class ReadPort(tMax: Int, roundMax: Int, dataWidth: Int) extends Bundle {
@@ -83,39 +84,68 @@ case class RoundConstants(config: RoundConstantsConfig) extends Component {
       yield Mem(UInt(config.dataWidth bits), matrixTranspose(i).map(U(_)))
 
   for (port <- io.readPorts) {
-    val dataVec = constantsRoms.map(_.readAsync(port.roundIndex))
+    val dataVec = if (config.memType) {
+      constantsRoms.map(_.readAsync(port.roundIndex))
+    } else {
+      constantsRoms.map(_.readSync(port.roundIndex))
+    }
     port.data := dataVec(port.tIndex)
   }
+
 }
 
 object RoundConstantsT3 {
-  def apply(): RoundConstants = {
+  def apply(memType: Boolean): RoundConstants = {
     val config =
-      RoundConstantsConfig(t = 3, roundNum = 63, portsNum = 1, dataWidth = 255)
+      RoundConstantsConfig(
+        t = 3,
+        roundNum = 63,
+        portsNum = 1,
+        dataWidth = 255,
+        memType = memType
+      )
     RoundConstants(config)
   }
 }
 
 object RoundConstantsT5 {
-  def apply(): RoundConstants = {
+  def apply(memType: Boolean): RoundConstants = {
     val config =
-      RoundConstantsConfig(t = 5, roundNum = 64, portsNum = 1, dataWidth = 255)
+      RoundConstantsConfig(
+        t = 5,
+        roundNum = 64,
+        portsNum = 1,
+        dataWidth = 255,
+        memType = memType
+      )
     RoundConstants(config)
   }
 }
 
 object RoundConstantsT9 {
-  def apply(): RoundConstants = {
+  def apply(memType: Boolean): RoundConstants = {
     val config =
-      RoundConstantsConfig(t = 9, roundNum = 65, portsNum = 1, dataWidth = 255)
+      RoundConstantsConfig(
+        t = 9,
+        roundNum = 65,
+        portsNum = 1,
+        dataWidth = 255,
+        memType = memType
+      )
     RoundConstants(config)
   }
 }
 
 object RoundConstantsT12 {
-  def apply(): RoundConstants = {
+  def apply(memType: Boolean): RoundConstants = {
     val config =
-      RoundConstantsConfig(t = 12, roundNum = 65, portsNum = 1, dataWidth = 255)
+      RoundConstantsConfig(
+        t = 12,
+        roundNum = 65,
+        portsNum = 1,
+        dataWidth = 255,
+        memType = memType
+      )
     RoundConstants(config)
   }
 }
@@ -128,7 +158,13 @@ object MDSMatrixVerilog {
 
 object RoundConstantsVerilog {
   val myconfig =
-    RoundConstantsConfig(t = 3, roundNum = 63, portsNum = 3, dataWidth = 255)
+    RoundConstantsConfig(
+      t = 3,
+      roundNum = 63,
+      portsNum = 3,
+      dataWidth = 255,
+      memType = false
+    )
 
   def main(args: Array[String]): Unit = {
     SpinalVerilog(RoundConstants(myconfig))
