@@ -2,7 +2,7 @@ import $ivy.`com.goyeau::mill-scalafix:0.2.5`
 import com.goyeau.mill.scalafix.ScalafixModule
 import mill._, scalalib._, scalafmt._
 
-val spinalVersion = "1.6.0"
+val spinalVersion = "1.6.4"
 
 object poseidon extends ScalaModule with ScalafmtModule with ScalafixModule {
   def scalaVersion = "2.13.6"

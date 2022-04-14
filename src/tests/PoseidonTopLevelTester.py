@@ -9,14 +9,14 @@ from poseidon_python import poseidon_ff, basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 100
+CASES_NUM = 500
 
 
 class PoseidonTopLevelTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_inputs = Queue(maxsize=80)
-        self.ref_outputs = Queue(maxsize=80)
+        self.ref_inputs = Queue(maxsize=100)
+        self.ref_outputs = Queue(maxsize=100)
 
     async def reset_dut(self):
         """reset the dut"""
@@ -117,7 +117,12 @@ async def PoseidonTopLevelTest(dut):
     # rindex = [0,0,0,0]
     while True:
         await RisingEdge(dut.clk)
-
+        if (
+            dut.aXI4StreamTransmitter_1_io_input_ready.value
+            & dut.poseidonLoop_1_io_output_m2sPipe_valid.value
+        ):
+            print("state id:")
+            print(dut.poseidonLoop_1_io_output_m2sPipe_payload_state_id.value)
         # if (
         #     dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
         #     & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value

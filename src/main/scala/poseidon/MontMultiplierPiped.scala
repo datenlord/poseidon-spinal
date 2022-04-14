@@ -62,16 +62,17 @@ object OneBitFullAdderArray {
 case class MontMultiplierConfig(
     modulus: BigInt,
     compensation: BigInt,
-    dataWidth: Int
+    dataWidth: Int,
+    rWidth: Int,
+    radix: Int
 )
 
-case class MultiplierContext(dataWidth: Int) extends Bundle {
-  val xTemp = UInt(dataWidth bits)
-  val yTemp = UInt(dataWidth bits)
-  val yAddM = UInt(dataWidth + 1 bits)
-  val sum = UInt(dataWidth + 1 bits)
-  val carry = UInt(dataWidth + 1 bits)
-  val counter = UInt(log2Up(51) bits)
+case class MultiplierContext(g: MontMultiplierConfig) extends Bundle {
+  val xTemp = UInt(g.rWidth bits)
+  val yTemp = UInt(g.dataWidth bits)
+  val yAddM = UInt(g.dataWidth + 1 bits)
+  val sum = UInt(g.dataWidth + 1 bits)
+  val carry = UInt(g.dataWidth + 1 bits)
 }
 
 object MontMultiplierPiped {
@@ -93,42 +94,36 @@ case class MontMultiplierPiped(g: MontMultiplierConfig) extends Component {
   }
 
   val preComputation = new Area {
-    val initialContext = MultiplierContext(g.dataWidth)
-    initialContext.xTemp := io.input.op1
+    val initialContext = MultiplierContext(g)
+    initialContext.xTemp := io.input.op1.resized
     initialContext.yTemp := io.input.op2
     initialContext.yAddM := io.input.op2 +^ U(g.modulus)
     initialContext.sum := 0
     initialContext.carry := 0
-    initialContext.counter := 0
-    val output = io.input.translateWith(initialContext).stage()
+    val output = io.input.translateWith(initialContext).m2sPipe().s2mPipe()
   }
 
   val adderPipeline = new Area {
     val input = preComputation.output
-    val loopback = Stream(MultiplierContext(g.dataWidth))
 
-    val tempRes = Vec(Stream(MultiplierContext(g.dataWidth)), 4)
-    tempRes(0) << StreamArbiterFactory.lowerFirst.onArgs(loopback, input)
+    val tempRes = Vec(Stream(MultiplierContext(g)), g.rWidth / g.radix + 1)
+    tempRes(0) << input
 
-    for (i <- 0 until 3) {
-      val temp = MultiplierContext(g.dataWidth)
-      temp.xTemp := tempRes(i).xTemp |>> 5
+    for (i <- 0 until g.rWidth / g.radix) {
+      val temp = MultiplierContext(g)
+      temp.xTemp := tempRes(i).xTemp |>> g.radix
       temp.yTemp := tempRes(i).yTemp
       temp.yAddM := tempRes(i).yAddM
-      temp.counter := tempRes(i).counter + 1
-      val arrayConfig = AdderArrayConfig(g.modulus, 5, g.dataWidth)
+      val arrayConfig = AdderArrayConfig(g.modulus, g.radix, g.dataWidth)
       OneBitFullAdderArray(
         arrayConfig,
         tempRes(i).payload,
         temp.carry,
         temp.sum
       )
-      tempRes(i + 1) << tempRes(i).translateWith(temp).stage()
+      tempRes(i + 1) << tempRes(i).translateWith(temp).m2sPipe()
     }
-    val select = tempRes(3).valid && (tempRes(3).counter === 51)
-    val twoStreams = StreamDemux(tempRes(3), select.asUInt, 2)
-    val output = twoStreams(1)
-    loopback </< twoStreams(0)
+    val output = tempRes(g.rWidth / g.radix).s2mPipe()
   }
 
   val resCombination = new Area {
@@ -144,6 +139,7 @@ case class MontMultiplierPiped(g: MontMultiplierConfig) extends Component {
     }
     output.arbitrationFrom(input)
   }
+
   io.output << resCombination.output.stage()
 }
 
@@ -201,12 +197,11 @@ object MontMultiplierPipedSim {
   }
 }
 
-case class MultiplierContextSim(dataWidth: Int) extends Bundle {
-  val xTemp = UInt(dataWidth bits)
-  val yTemp = UInt(dataWidth bits)
-  val yAddM = UInt(dataWidth + 1 bits)
-  val adderRes = UInt(dataWidth + 1 bits)
-  val counter = UInt(log2Up(51) bits)
+case class MultiplierContextSim(g: MontMultiplierConfig) extends Bundle {
+  val xTemp = UInt(g.rWidth bits)
+  val yTemp = UInt(g.dataWidth bits)
+  val yAddM = UInt(g.dataWidth + 1 bits)
+  val adderRes = UInt(g.dataWidth + 1 bits)
 }
 
 case class MontMultiplierPipedSim(g: MontMultiplierConfig) extends Component {
@@ -217,36 +212,30 @@ case class MontMultiplierPipedSim(g: MontMultiplierConfig) extends Component {
   }
 
   val preComputation = new Area {
-    val initialContext = MultiplierContextSim(g.dataWidth)
-    initialContext.xTemp := io.input.op1
+    val initialContext = MultiplierContextSim(g)
+    initialContext.xTemp := io.input.op1.resized
     initialContext.yTemp := io.input.op2
     initialContext.yAddM := io.input.op2 +^ U(g.modulus)
     initialContext.adderRes := 0
-    initialContext.counter := 0
-    val output = io.input.translateWith(initialContext).stage()
+    val output = io.input.translateWith(initialContext).m2sPipe().s2mPipe()
   }
 
   val adderPipeline = new Area {
     val input = preComputation.output
-    val loopback = Stream(MultiplierContextSim(g.dataWidth))
 
-    val tempRes = Vec(Stream(MultiplierContextSim(g.dataWidth)), 4)
-    tempRes(0) << StreamArbiterFactory.lowerFirst.onArgs(loopback, input)
+    val tempRes = Vec(Stream(MultiplierContextSim(g)), g.rWidth / g.radix + 1)
+    tempRes(0) << input
 
-    for (i <- 0 until 3) {
-      val temp = MultiplierContextSim(g.dataWidth)
-      temp.xTemp := tempRes(i).xTemp |>> 5
+    for (i <- 0 until g.rWidth / g.radix) {
+      val temp = MultiplierContextSim(g)
+      temp.xTemp := tempRes(i).xTemp |>> g.radix
       temp.yTemp := tempRes(i).yTemp
       temp.yAddM := tempRes(i).yAddM
-      temp.counter := tempRes(i).counter + 1
-      val arrayConfig = AdderArrayConfig(g.modulus, 5, g.dataWidth)
+      val arrayConfig = AdderArrayConfig(g.modulus, g.radix, g.dataWidth)
       temp.adderRes := OneBitFullAdderArraySim(arrayConfig, tempRes(i).payload)
-      tempRes(i + 1) << tempRes(i).translateWith(temp).stage()
+      tempRes(i + 1) << tempRes(i).translateWith(temp).m2sPipe()
     }
-    val select = tempRes(3).valid && (tempRes(3).counter === 51)
-    val twoStreams = StreamDemux(tempRes(3), select.asUInt, 2)
-    val output = twoStreams(1)
-    loopback </< twoStreams(0)
+    val output = tempRes(g.rWidth / g.radix).s2mPipe()
   }
 
   val resCombination = new Area {
@@ -264,9 +253,19 @@ case class MontMultiplierPipedSim(g: MontMultiplierConfig) extends Component {
   io.output << resCombination.output.stage()
 }
 
+object MontMultiplierPipedSim2 {
+  def apply(
+      g: MontMultiplierConfig,
+      input: Stream[operands]
+  ): Stream[results] = {
+    val multiplierInst = MontMultiplierPipedSim2(g)
+    multiplierInst.io.input << input
+    multiplierInst.io.output
+  }
+}
+
 case class MultiplierContextSim2(dataWidth: Int) extends Bundle {
   val res = UInt(dataWidth bits)
-  val counter = UInt(log2Up(51) bits)
 }
 
 case class MontMultiplierPipedSim2(g: MontMultiplierConfig) extends Component {
@@ -278,35 +277,31 @@ case class MontMultiplierPipedSim2(g: MontMultiplierConfig) extends Component {
 
   val preComputation = new Area {
     val initialContext = MultiplierContextSim2(g.dataWidth)
-    val temp0 = (io.input.op1 * io.input.op2).resize(g.dataWidth)
+    val temp0 = (io.input.op1 * io.input.op2).resize(g.rWidth)
     val inverse = BigInt(
       "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
       16
     )
-    val temp1 = (temp0 * U(inverse, g.dataWidth bits)).resize(g.dataWidth)
+    val temp1 = (temp0 * U(inverse, g.dataWidth bits)).resize(g.rWidth)
     val temp2 = (io.input.op1 * io.input.op2 +^ temp1 * g.modulus)
-    initialContext.res := ((temp2 |>> g.dataWidth) % g.modulus).resized
-    initialContext.counter := 0
-    val output = io.input.translateWith(initialContext).stage()
+    initialContext.res := ((temp2 |>> g.rWidth) % g.modulus).resized
+    val output = io.input.translateWith(initialContext).s2mPipe().m2sPipe()
   }
 
   val adderPipeline = new Area {
     val input = preComputation.output
-    val loopback = Stream(MultiplierContextSim2(g.dataWidth))
 
-    val tempRes = Vec(Stream(MultiplierContextSim2(g.dataWidth)), 4)
-    tempRes(0) << StreamArbiterFactory.lowerFirst.onArgs(loopback, input)
+    val tempRes =
+      Vec(Stream(MultiplierContextSim2(g.dataWidth)), g.rWidth / g.radix + 1)
+    tempRes(0) << input
 
-    for (i <- 0 until 3) {
+    for (i <- 0 until g.rWidth / g.radix) {
       val temp = MultiplierContextSim2(g.dataWidth)
       temp.res := tempRes(i).res
-      temp.counter := tempRes(i).counter + 1
-      tempRes(i + 1) << tempRes(i).translateWith(temp).stage()
+      tempRes(i + 1) << tempRes(i).translateWith(temp).m2sPipe()
     }
-    val select = tempRes(3).valid && (tempRes(3).counter === 51)
-    val twoStreams = StreamDemux(tempRes(3), select.asUInt, 2)
-    val output = twoStreams(1)
-    loopback </< twoStreams(0)
+
+    val output = tempRes(g.rWidth / g.radix).s2mPipe()
   }
 
   val resCombination = new Area {
@@ -386,6 +381,7 @@ case class MontMultiplierPipedSim2(g: MontMultiplierConfig) extends Component {
 
 object MontMultiplierPipedVerilog {
   def main(args: Array[String]): Unit = {
+
     val modulus = BigInt(
       "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
       radix = 16
@@ -394,7 +390,8 @@ object MontMultiplierPipedVerilog {
       "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
       radix = 16
     )
-    val config = MontMultiplierConfig(modulus, compensation, 255)
+
+    val config = MontMultiplierConfig(modulus, compensation, 255, 255, 5)
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
@@ -412,7 +409,7 @@ object MontMultiplierPipedSimVerilog {
       "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
       radix = 16
     )
-    val config = MontMultiplierConfig(modulus, compensation, 255)
+    val config = MontMultiplierConfig(modulus, compensation, 255, 256, 4)
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
@@ -430,7 +427,7 @@ object MontMultiplierPipedSim2Verilog {
       "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
       radix = 16
     )
-    val config = MontMultiplierConfig(modulus, compensation, 255)
+    val config = MontMultiplierConfig(modulus, compensation, 255, 256, 4)
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"

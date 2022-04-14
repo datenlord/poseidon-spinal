@@ -58,7 +58,7 @@ class PrimeField:
 
     def __init__(self, value, N=P):
         self.N = N
-        self.bit_num = int(math.log2(N) + 1)
+        self.bit_num = 256  # int(math.log2(N) + 1)
         self.R = pow(2, self.bit_num)
         x, y = getxy(self.R, self.N)
         self.N1 = -y

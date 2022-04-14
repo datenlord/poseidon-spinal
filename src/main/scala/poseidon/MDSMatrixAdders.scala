@@ -3,22 +3,22 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 
-object MDSContextInitValue {
-  def apply(g: PoseidonGenerics): MDSContext = {
-    val initValue = MDSContext(g)
-    initValue.state_elements.foreach(_ := 0)
-    initValue.state_size := 0
-    initValue.state_id := 0
-    initValue.round_index := 0
-    initValue
-  }
-}
+// object MDSContextInitValue {
+//   def apply(g: PoseidonGenerics): MDSContext = {
+//     val initValue = MDSContext(g)
+//     initValue.state_elements.foreach(_ := 0)
+//     initValue.state_size := 0
+//     initValue.state_id := 0
+//     initValue.round_index := 0
+//     initValue
+//   }
+// }
 
 object MDSMatrixAdders {
   def apply(
       g: PoseidonGenerics,
-      input: Stream[MDSContext]
-  ): Stream[MDSContext] = {
+      input: Flow[MDSContext]
+  ): Flow[MDSContext] = {
     val matrixAddersInst = new MDSMatrixAdders(g)
     matrixAddersInst.io.input << input
     matrixAddersInst.io.output
@@ -28,8 +28,8 @@ object MDSMatrixAdders {
 class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input = slave Stream (MDSContext(g))
-    val output = master Stream (MDSContext(g))
+    val input = slave Flow (MDSContext(g))
+    val output = master Flow (MDSContext(g))
   }
 
   def ModAdderVec(op1s: Vec[UInt], op2s: Vec[UInt], results: Vec[UInt]) =
@@ -48,10 +48,10 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
 
   // registers holding intermediate results
   val tempRes = Reg(MDSContext(g))
-  tempRes.state_size init (0)
-  tempRes.state_elements.foreach(_ init (0))
-  tempRes.state_id init (0)
-  tempRes.round_index init (0)
+  // tempRes.state_size init (0)
+  // tempRes.state_elements.foreach(_ init (0))
+  // tempRes.state_id init (0)
+  // tempRes.round_index init (0)
   val modAdderRes = cloneOf(MDSContext(g).state_elements)
   val modAdderVec =
     ModAdderVec(tempRes.state_elements, io.input.state_elements, modAdderRes)
@@ -59,18 +59,17 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
   //
   val countNum =
     Mux(tempRes.state_size === 5, tempRes.state_size + 1, tempRes.state_size)
+
   // implement the state machine logic
   val fsm = new StateMachine {
 
     val counter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
     io.output.payload.assignSomeByName(tempRes)
     io.output.valid := False
-    io.input.ready := False
 
     val IDLE: State = new State with EntryPoint {
       whenIsActive {
-        io.input.ready := True
-        when(io.input.fire) {
+        when(io.input.valid) {
           tempRes.assignSomeByName(io.input.payload)
           goto(ADDING)
           counter := counter + 1
@@ -80,8 +79,7 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
 
     val ADDING: State = new State {
       whenIsActive {
-        io.input.ready := True
-        when(io.input.fire) {
+        when(io.input.valid) {
           tempRes.state_elements.assignFrom(modAdderRes)
           when(counter + 1 === countNum) {
             goto(DONE)
@@ -96,15 +94,12 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
     val DONE: State = new State {
       whenIsActive {
         io.output.valid := True
-        when(io.output.fire) {
-          io.input.ready := True
-          when(io.input.fire) {
-            tempRes.assignSomeByName(io.input.payload)
-            goto(ADDING)
-            counter := counter + 1
-          } otherwise {
-            goto(IDLE)
-          }
+        when(io.input.valid) {
+          tempRes.assignSomeByName(io.input.payload)
+          goto(ADDING)
+          counter := counter + 1
+        } otherwise {
+          goto(IDLE)
         }
       }
     }
@@ -118,7 +113,7 @@ object MDSMatrixAddersVerilog {
       round_max = 65,
       loop_num = 5,
       data_width = 255,
-      id_width = 4,
+      id_width = 8,
       isSim = true
     )
     SpinalConfig(

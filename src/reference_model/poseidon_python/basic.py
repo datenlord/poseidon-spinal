@@ -97,3 +97,9 @@ class PrimeFieldOps:
                     fileobject.write(str(element) + "\n")
 
             fileobject.close()
+
+
+# mds_matrice = PrimeFieldOps.get_mds_matrix(3)
+# for x in mds_matrice:
+#     for y in x:
+#         print(hex(y));
