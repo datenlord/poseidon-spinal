@@ -7,10 +7,10 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from cocotb_test import simulator
 
-CASES_NUM = 2000  # the number of test cases
+CASES_NUM = 1000  # the number of test cases
 
 
-class MontMultiplierPipedTester:
+class MontgomeryMultFlowTester:
     def __init__(self, target):
         self.dut = target
         self.ref_outputs = Queue(maxsize=150)  # store reference results
@@ -44,7 +44,7 @@ class MontMultiplierPipedTester:
             dut.io_input_payload_op2.value = op2.value
 
             await RisingEdge(dut.clk)
-            if dut.io_input_valid.value & dut.io_input_ready.value:
+            if dut.io_input_valid.value:
                 cases_count += 1
                 self.ref_outputs.put(
                     [op1.value, op2.value, op1.MonPro(op1.value, op2.value)]
@@ -59,9 +59,8 @@ class MontMultiplierPipedTester:
         while cases_count < CASES_NUM:
 
             ready = True  # random.random() > 0.3
-            dut.io_output_ready.value = ready
             await RisingEdge(dut.clk)
-            if dut.io_output_ready.value & dut.io_output_valid.value == True:
+            if dut.io_output_valid.value == True:
                 cases_count += 1
                 op1, op2, ref_res = self.ref_outputs.get()
                 dut_res = int(dut.io_output_payload_res.value)
@@ -82,9 +81,8 @@ async def MontMultiplierTest(dut):
     dut.io_input_valid.value = False
     dut.io_input_payload_op1.value = 0
     dut.io_input_payload_op2.value = 0
-    dut.io_output_ready.value = False
 
-    tester = MontMultiplierPipedTester(dut)
+    tester = MontgomeryMultFlowTester(dut)
     await tester.reset_dut()
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())

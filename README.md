@@ -2,6 +2,8 @@
 
 This project  implements a hardware accelerator for ***Poseidon*** hash function, which is used in [Filecoin](https://filecoin.io/)'s sealing process. The hardware design is accomplished in [SpinalHDL](https://spinalhdl.github.io/SpinalDoc-RTD/master/index.html), a new HDL which is more efficient than verilog,  and is tested under [Cocotb](https://docs.cocotb.org/en/stable/#) testing framework. In addition to hardware implementation, this project also includes a python-based software implementation of ***Poseidon*** hash function, which is mainly used as a reference model for the verification of our hardware design. 
 
+In this branch, in order to simplify the difficulty of placement and routing during implementation, data flow in PoseidonThread module is wrapped with Flow interface which only consists of payload and valid and pipelines of PoseidonThread are without back pressure.
+
 ## Poseidon Hash Function
 Poseidon is a new hash function which has been designed to be friendly to zero-knowledge applications, specifically, in minimizing the proof generation time, the proof size, and the verification time. For example, Poseidon hasher is used in the zero-knowledge proof system of FileCoin, an IPFS based decentralized storage network. The computation of Poseidon Hasher involves a large amount of compute-intensive modular multiplications, making it one of the performance bottlenecks in the mining process of FileCoin.
 
@@ -115,9 +117,5 @@ The specific operating mechanism of Poseidon accelerator includes:
 4) In PoseidonThread, SBox5Stage, AddRoundConstantStage corresponds to S-boxes and Add Round Constants in dataflow picture shown in Section2. And MDSMatrixMultiplier and MDSMatrixAdders accomplish the computation of MDSMixing in Poseidon hasher jointly. 
 5) DataDemux is a 1-2 router that transfers the output of PoseidonThread to AXI4Transmitter or StreamArbiter. If all rounds are completed, the internal state is transmitted to AXI4Transmitter, otherwise it loops back to StreamArbiter and starts computation of next round. 
 6) AXI4Transmitter outputs the hash result under AXI4 Stream protocol to XDMA IP and a fifo is implemented in it to reorder and buffer the input from LoopbackDemux.
-
-
-
-
 
 

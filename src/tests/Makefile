@@ -30,6 +30,10 @@ ifeq ($(DUT), MontMultiplierPiped)
 		VERILOG_SOURCES += ../main/verilog/MontMultiplierBasics.v
 endif
 
+ifeq ($(DUT), MontMultiplierPipedSim)
+		VERILOG_SOURCES += ../main/verilog/MontMultiplierBasics.v
+endif
+
 ifeq ($(DUT), PoseidonThread)
 		VERILOG_SOURCES += ../main/verilog/ModAdder.v
 		VERILOG_SOURCES += ../main/verilog/MontMultiplierBasics.v
@@ -52,15 +56,22 @@ ifeq ($(DUT), MontMultiplierPipedSim2)
 	MODULE = MontMultiplierPipedTester
 endif
 
-ifeq ($(DUT), MontgomeryMult)
+ifeq ($(DUT), MontMultiplierPipedSim)
+	MODULE = MontMultiplierPipedTester
+endif
+
+ifeq ($(DUT), MontgomeryMultStream)
 	MODULE = MontMultiplierPipedTester
 endif
 
 
 ifeq ($(DUT), MultiplierIPStream)
-	MODULE = MultiplierTester
+	MODULE = MultiplierStreamTester
 endif
 
+ifeq ($(DUT), MultiplierIPFlow)
+	MODULE = MultiplierFlowTester
+endif
 
 # include cocotb's make rules to take care of the simulator setup
 include $(shell cocotb-config --makefiles)/Makefile.sim

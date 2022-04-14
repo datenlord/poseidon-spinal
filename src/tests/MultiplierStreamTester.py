@@ -6,7 +6,7 @@ from cocotb.result import TestSuccess
 from cocotb.triggers import RisingEdge
 from queue import Queue
 
-CASES_NUM = 1000  # the number of test cases
+CASES_NUM = 3000  # the number of test cases
 
 
 class MultiplierTester:
@@ -81,7 +81,7 @@ async def MultiplierTest(dut):
     dut.io_input_payload_op2.value = 0
     dut.io_output_ready.value = False
 
-    tester = MultiplierTester(dut, 256, 30)
+    tester = MultiplierTester(dut, 255, 50)
     await tester.reset_dut()
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())

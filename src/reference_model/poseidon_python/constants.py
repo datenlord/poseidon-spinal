@@ -1,3 +1,4 @@
+from asyncio import constants
 import basic
 import os
 
@@ -82,3 +83,8 @@ def output_round_constants():
         for element in round_constants:
             fileobject.write(str(element) + "\n")
         fileobject.close()
+
+
+# constants = generate_constants(5, 8, 56);
+# for i in range(10):
+#     print(hex(constants[i]));

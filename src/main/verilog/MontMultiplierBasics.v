@@ -37,7 +37,7 @@ module OneBitFullAdderArray #(
     );
 
     wire [DATA_WIDTH:0] carry_connections [ROW_NUM:0];
-    wire [DATA_WIDTH:0] sum_connections [ROW_NUM:0];
+    wire [DATA_WIDTH:0] sum_connections   [ROW_NUM:0];
     assign carry_connections[0] = carry_i;
     assign sum_connections[0] = sum_i;
 

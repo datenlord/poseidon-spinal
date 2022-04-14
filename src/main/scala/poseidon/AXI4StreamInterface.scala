@@ -82,17 +82,15 @@ case class TransmitterContext(g: PoseidonGenerics) extends Bundle {
 object AXI4StreamTransmitter {
   def apply(
       g: PoseidonGenerics,
-      bufferDepth: Int,
       input: Stream[TransmitterContext]
   ): AXI4Stream = {
-    val transmitterInst = new AXI4StreamTransmitter(g, bufferDepth)
+    val transmitterInst = new AXI4StreamTransmitter(g)
     transmitterInst.io.input << input
     transmitterInst.io.output
   }
 }
 
-class AXI4StreamTransmitter(g: PoseidonGenerics, bufferDepth: Int)
-    extends Component {
+class AXI4StreamTransmitter(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
     val input = slave Stream (TransmitterContext(g))
@@ -111,7 +109,7 @@ class AXI4StreamTransmitter(g: PoseidonGenerics, bufferDepth: Int)
   io.output.valid := demuxOutputs(1).valid
   demuxOutputs(1).ready := io.output.ready
   io.output.payload := demuxOutputs(1).state_element
-  loopback << demuxOutputs(0).queue(bufferDepth).s2mPipe()
+  loopback << demuxOutputs(0).queue(g.transmitterQueue).s2mPipe()
 
   // val inputTemp = io.input.s2mPipe().m2sPipe()
   // val outputTemp = inputTemp.queue(bufferDepth)
@@ -173,11 +171,12 @@ object AXI4StreamTransmitterVerilog {
       loop_num = 2,
       data_width = 255,
       id_width = 5,
-      isSim = true
+      isSim = true,
+      transmitterQueue = 20
     )
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
-    ).generate(new AXI4StreamTransmitter(config, 10))
+    ).generate(new AXI4StreamTransmitter(config))
   }
 }
