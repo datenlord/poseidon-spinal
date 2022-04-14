@@ -2,6 +2,8 @@ import math
 import logging
 
 P = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
+RWIDTH = 256
+
 logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
@@ -48,18 +50,18 @@ def get_modular_inverse(x, modulus):
 
 class PrimeField:
     N = 0
-    bit_num = 0
+    R_WIDTH = 0
     R = 0
     N1 = 0
 
     def toMont(self, x):
         """transform x to montgomery format"""
-        return (x << self.bit_num) % self.N
+        return (x << self.R_WIDTH) % self.N
 
-    def __init__(self, value, N=P):
-        self.N = N
-        self.bit_num = 256  # int(math.log2(N) + 1)
-        self.R = pow(2, self.bit_num)
+    def __init__(self, value, n=P):
+        self.N = n
+        self.R_WIDTH = RWIDTH
+        self.R = pow(2, self.R_WIDTH)
         x, y = getxy(self.R, self.N)
         self.N1 = -y
         self.value = self.toMont(value)
@@ -68,7 +70,7 @@ class PrimeField:
         """Montgomery product"""
         t = op1 * op2 % self.R
         m = t * self.N1 % self.R
-        u = (op1 * op2 + m * self.N) >> self.bit_num
+        u = (op1 * op2 + m * self.N) >> self.R_WIDTH
 
         while u >= self.N:
             u -= self.N
@@ -124,10 +126,14 @@ class PrimeField:
 
 
 # test
-def testmul():
+def test_mul():
     p1 = PrimeField(100)
     p2 = PrimeField(999)
     p3 = PrimeField(1234567890)
+
+    print(hex(p1.value))
+    print(hex(p1.N1))
+    print(hex(p1.R))
 
     p1.mulassign(p2)
     assert (
@@ -141,7 +147,7 @@ def testmul():
     logging.info("pass mul test!!")
 
 
-def testadd():
+def test_add():
     a = 9870765432
     b = 4567432198765430
     c = 3421987654320
@@ -157,13 +163,10 @@ def testadd():
     logging.info("pass add test")
 
 
-def testexp():
+def test_exp():
     a = 65439870654
     p1 = PrimeField(a)
     p1.expassign(8)
     assert p1.fromMont() == pow(a, 8) % p1.N, "the result of p1.expassign(8) is wrong."
 
-    logging.debug("pass exp test!!")
-
-
-testexp()
+    logging.info("pass exp test!!")

@@ -1,3 +1,4 @@
+from asyncio import constants
 import basic
 import os
 
@@ -80,5 +81,6 @@ def output_round_constants():
         fileobject = open("round_constants_{}.txt".format(t), "w")
         round_constants = generate_constants(t, basic.ROUNDFULL, basic.ROUNDPARTIAL[t])
         for element in round_constants:
-            fileobject.write(str(element) + "\n")
+            output_str = hex(element)
+            fileobject.write(output_str[2:] + "\n")
         fileobject.close()

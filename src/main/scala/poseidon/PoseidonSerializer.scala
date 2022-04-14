@@ -7,89 +7,104 @@ import spinal.lib.fsm._
 object PoseidonSerializer {
   def apply(g: PoseidonGenerics, input: Stream[MDSContext]): Stream[Context] = {
     val serializerInst = PoseidonSerializer(g)
-    serializerInst.io.parallelInput << input
-    serializerInst.io.serialOutput
+    serializerInst.io.input << input
+    serializerInst.io.output
   }
 }
 
 case class PoseidonSerializer(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val parallelInput = slave Stream (MDSContext(g))
-    val serialOutput = master Stream (new Context(g))
+    val input = slave Stream (MDSContext(g))
+    val output = master Stream (new Context(g))
   }
 
-  val stateSize = Reg(UInt(log2Up(g.t_max) bits)) init (0)
-  val lastElementIndex = Mux(
-    stateSize === 5,
-    stateSize,
-    stateSize - 1
-  ) // when size is 5, resize to 6
-  val roundIndex = Reg(UInt(log2Up(g.round_max) bits)) init (0)
-  val stateID = Reg(UInt(g.id_width bits)) init (0)
-  val buffer = Vec(Reg(UInt(g.data_width bits)), g.t_max)
-  buffer.foreach(_ init (0))
+  val buffer = Reg(MDSContext(g))
+  buffer.isFull init (False)
+  buffer.fullRound init (0)
+  buffer.partialRound init (0)
+  buffer.stateSize init (0)
+  buffer.stateID init (0)
+  buffer.stateElements.foreach(_ init (0))
 
   val fsm = new StateMachine {
-    val counter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
+    val counter = Reg(UInt(log2Up(g.sizeMax) bits)) init (0)
 
     val IDLE = new State with EntryPoint
-    val BUSY = new State
+    val FULL = new State
+    val PARTIAL = new State
     val LAST = new State
 
     // set default value
-    io.parallelInput.ready := False
+    io.input.ready := False
 
-    io.serialOutput.valid := False
-    io.serialOutput.state_id := 0
-    io.serialOutput.state_size := 0
-    io.serialOutput.state_element := 0
-    io.serialOutput.state_index := 0
-    io.serialOutput.round_index := 0
+    io.output.valid := False
+    io.output.isFull := buffer.isFull
+    io.output.fullRound := buffer.fullRound
+    io.output.partialRound := buffer.partialRound
+    io.output.stateIndex := counter
+    io.output.stateSize := buffer.stateSize
+    io.output.stateID := buffer.stateID
+    io.output.stateElement := buffer.stateElements(counter)
+    io.output.stateElements.foreach(_ := 0)
 
     IDLE
       .whenIsActive {
-        io.parallelInput.ready := True
-        when(io.parallelInput.fire) {
-          (buffer lazyZip io.parallelInput.state_elements).foreach(_ := _)
-          stateID := io.parallelInput.state_id
-          stateSize := io.parallelInput.state_size
-          roundIndex := io.parallelInput.round_index
-          goto(BUSY)
+        io.input.ready := True
+        when(io.input.fire) {
+          buffer := io.input.payload
+          when(io.input.isFull) {
+            goto(FULL)
+          } otherwise {
+            when(io.input.stateSize < 9) {
+              goto(LAST)
+            } otherwise {
+              goto(PARTIAL)
+            }
+          }
         }
       }
 
-    BUSY
+    FULL
       .whenIsActive {
-        io.serialOutput.valid := True
-        io.serialOutput.state_element := buffer(counter)
-        io.serialOutput.state_index := counter
-        io.serialOutput.state_size := stateSize
-        io.serialOutput.round_index := roundIndex
-        io.serialOutput.state_id := stateID
-        when(io.serialOutput.fire) {
+        io.output.valid := True
+        when(io.output.fire) {
           counter := counter + 1
-          when(counter === lastElementIndex - 1) { goto(LAST) }
+          when(counter === buffer.stateSize - 2) { goto(LAST) }
+        }
+      }
+
+    PARTIAL
+      .whenIsActive {
+        io.output.valid := True
+        for (i <- 0 until g.sizeMax - 1)
+          io.output.stateElements(i) := buffer.stateElements(i + 1)
+        when(io.output.fire) {
+          counter := counter + 1
+          goto(LAST)
         }
       }
 
     LAST
       .whenIsActive {
-        io.serialOutput.valid := True
-        io.serialOutput.state_element := buffer(counter)
-        io.serialOutput.state_index := counter
-        io.serialOutput.state_size := stateSize
-        io.serialOutput.round_index := roundIndex
-        io.serialOutput.state_id := stateID
+        io.output.valid := True
 
-        when(io.serialOutput.fire) {
-          io.parallelInput.ready := True
-          when(io.parallelInput.fire) {
-            (buffer lazyZip io.parallelInput.state_elements).foreach(_ := _)
-            stateID := io.parallelInput.state_id
-            stateSize := io.parallelInput.state_size
-            roundIndex := io.parallelInput.round_index
-            goto(BUSY)
+        when(!buffer.isFull) {
+          io.output.stateElement := buffer.stateElements(0)
+          for (i <- 0 until g.sizeMax - 1)
+            io.output.stateElements(i) := buffer.stateElements(i + 1)
+        }
+
+        when(io.output.fire) {
+          io.input.ready := True
+
+          when(io.input.fire) {
+            buffer := io.input.payload
+            when(io.input.isFull) {
+              goto(FULL)
+            } otherwise {
+              when(io.input.stateSize > 5)(goto(PARTIAL))
+            }
           } otherwise (goto(IDLE))
         }
       }
@@ -101,11 +116,11 @@ object PoseidonSerializerVerilog {
   def main(args: Array[String]): Unit = {
 
     val config = PoseidonGenerics(
-      t_max = 12,
-      round_max = 65,
-      loop_num = 3,
-      data_width = 255,
-      id_width = 5,
+      sizeMax = 12,
+      roundp = 57,
+      roundf = 8,
+      dataWidth = 255,
+      idWidth = 8,
       isSim = true
     )
 

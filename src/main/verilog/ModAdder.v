@@ -5,7 +5,7 @@ module ModAdder #(
     // the modulus of ModAdder
     parameter MODULUS = 255'h73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001,
     // R = exp(2, DATA_WIDTH)  MOD_COMPENSATION = R - MODULUS
-    parameter MOD_COMPENSATION = 255'hc1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff 
+    parameter MOD_COMPENSATION = 255'hc1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff
 )(
     input  wire [DATA_WIDTH-1:0] op1_i,
     input  wire [DATA_WIDTH-1:0] op2_i,

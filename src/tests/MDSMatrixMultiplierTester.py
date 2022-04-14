@@ -4,27 +4,75 @@ from cocotb.clock import Clock
 from cocotb.result import TestSuccess, TestFailure
 from cocotb.triggers import RisingEdge
 from queue import Queue
-from poseidon_python import finite_field as ff
-from poseidon_python import poseidon_ff
 
-from cocotb_test import simulator
+
+from poseidon_python import finite_field as ff
+from poseidon_python import basic
+from poseidon_python.poseidon_ff import *
 
 from BasicElements import Context, MDSContext
 
-CASES_NUM = 100
+CASES_NUM = 5000
 
 
 class MDSMatrixMultiplierTester:
-    def __init__(self, target):
+    def __init__(self, target, isFull=None, size=None, id=None):
+        self.dut = target
         self.ref_outputs = Queue(maxsize=100)
         self.ref_inputs = Queue(maxsize=100)
-        self.dut = target
+        self.isFull = isFull
+        self.size = size
+        self.id = id
+
+    def reference_model(self, context: Context):
+        size = context.state_size
+        ref_output = MDSContext(
+            context.isFull,
+            context.full_round,
+            context.partial_round,
+            context.state_size,
+            context.state_id,
+        )
+        if context.isFull:
+            mds_input_ff = (
+                [ff.PrimeField(0)] * context.state_index
+                + [context.state_element]
+                + [ff.PrimeField(0)] * (context.state_size - context.state_index - 1)
+            )
+            if context.full_round == (Context.roundf / 2 - 1):
+                matrix = transform_matrix(
+                    read_pre_sparse_matrix(size, "../../poseidon_constants")
+                )
+            else:
+                matrix = transform_matrix(basic.PrimeFieldOps.get_mds_matrix(size))
+            ref_output.copy_state_elements(mds_mixing_ff(mds_input_ff, matrix))
+        else:
+            w_hat, v_rest = read_sparse_matrix(size, "../../poseidon_constants")
+            sparse_w_ff = transform_matrix(w_hat)[context.partial_round]
+            sparse_v_ff = transform_matrix(v_rest)[context.partial_round]
+            res = []
+            if size < 9:
+                res.append(context.state_element.mul(sparse_w_ff[0]))
+                for i in range(1, size):
+                    res.append(context.state_element.mul(sparse_v_ff[i - 1]))
+                    res[i].addassign(context.state_elements[i - 1])
+                for i in range(size - 1):
+                    res.append(context.state_elements[i].mul(sparse_w_ff[i + 1]))
+            else:
+                res.append(context.state_element.mul(sparse_w_ff[0]))
+                if context.state_index == 0:
+                    for i in range(1, size):
+                        res.append(context.state_element.mul(sparse_v_ff[i - 1]))
+                        res[i].addassign(context.state_elements[i - 1])
+                else:
+                    for i in range(size - 1):
+                        res.append(context.state_elements[i].mul(sparse_w_ff[i + 1]))
+            ref_output.copy_state_elements(res)
+        return ref_output
 
     async def reset_dut(self):
-        self.dut.reset.value = 0
-        await RisingEdge(self.dut.clk)
         self.dut.reset.value = 1
-        for i in range(2):
+        for i in range(3):
             await RisingEdge(self.dut.clk)
 
         self.dut.reset.value = 0
@@ -35,28 +83,17 @@ class MDSMatrixMultiplierTester:
         while cases_count < CASES_NUM:
             # get random dut inputs
             context = Context()
-            context.set_rand_values(cases_count)
+            context.set_rand_values(isFull=self.isFull, size=self.size, id=self.id)
 
             # assign dut io port
-            self.dut.io_input_valid.value = random.random() > 0.2
+            self.dut.io_input_valid.value = True  # random.random()>0.2
             context.set_dut_ports(self.dut)
             await RisingEdge(self.dut.clk)
 
             if self.dut.io_input_valid.value == True:
                 cases_count += 1
                 # get reference output
-                mds_input_ff = (
-                    [ff.PrimeField(0)] * context.state_index
-                    + [context.state_element]
-                    + [ff.PrimeField(0)]
-                    * (context.state_size - context.state_index - 1)
-                )
-                mds_output_ff = poseidon_ff.mds_mixing_ff(mds_input_ff)
-
-                ref_output = MDSContext(
-                    context.round_index, context.state_size, context.state_id
-                )
-                ref_output.copy_state_elements(mds_output_ff)
+                ref_output = self.reference_model(context)
 
                 self.ref_outputs.put(ref_output)
                 self.ref_inputs.put(context)
@@ -89,7 +126,7 @@ class MDSMatrixMultiplierTester:
         raise TestSuccess(" pass {} test cases".format(CASES_NUM))
 
 
-@cocotb.test(timeout_time=400000, timeout_unit="ns")
+@cocotb.test(timeout_time=4000000, timeout_unit="ns")
 async def MDSMatrixMultiplierTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
@@ -105,16 +142,3 @@ async def MDSMatrixMultiplierTest(dut):
 
     while True:
         await RisingEdge(dut.clk)
-
-
-# pytest
-def test_MDSMatrixMultiplier():
-    simulator.run(
-        verilog_sources=[
-            "../main/verilog/MDSMatrixMultiplier.v",
-            "../main/verilog/MontMultiplierBasics.v",
-        ],
-        toplevel="MDSMatrixMultiplier",
-        module="MDSMatrixMultiplierTester",
-        python_search="./src/reference_model/",
-    )

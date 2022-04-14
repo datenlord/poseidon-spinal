@@ -1,3 +1,4 @@
+from typing import List
 from weakref import ref
 import cocotb
 import random
@@ -6,19 +7,19 @@ from cocotb.result import TestSuccess, TestFailure
 from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import finite_field as ff
-from poseidon_python import poseidon_ff, basic, constants
+from poseidon_python import basic, constants
+from poseidon_python.poseidon_ff import *
 from cocotb_test import simulator
 
 from BasicElements import Context, MDSContext
 
-CASES_NUM = 100
+CASES_NUM = 500
 
 
 class PoseidonThreadTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_inputs = Queue(maxsize=80)
-        self.ref_outputs = Queue(maxsize=80)  # store reference results
+        self.ref_outputs = Queue(maxsize=300)  # store reference results
 
     async def reset_dut(self):
         dut = self.dut
@@ -30,43 +31,63 @@ class PoseidonThreadTester:
 
         dut.reset.value = 0
 
-    def ref_poseidon_thread(self, dut_inputs):
+    def ref_poseidon_thread(self, context_vec: List[Context]):
         """reference poseidon thread function"""
-        state_size = dut_inputs[0].state_size
-        round_index = dut_inputs[0].round_index
+        isFull = context_vec[0].isFull
+        rf = context_vec[0].full_round
+        rp = context_vec[0].partial_round
+        t = context_vec[0].state_size
+        id = context_vec[0].state_id
         state_ff = []
-        for i in range(state_size):
-            state_ff.append(dut_inputs[i].state_element)
-
-        roundf = basic.ROUNDFULL
-        roundp = basic.ROUNDPARTIAL[state_size]
-
-        round_constants_ff = poseidon_ff.transform_array(
-            constants.generate_constants(state_size, roundf, roundp)
+        # read constants used in optimized poseidon from files
+        cmp_constants, pre_sparse, w_hat, v_rest = read_constants_files(
+            t, "../../poseidon_constants"
         )
-
-        state_ff = poseidon_ff.add_round_constants_ff(
-            state_ff,
-            round_constants_ff[
-                round_index * state_size : (round_index + 1) * state_size
-            ],
-        )
-
-        if (round_index >= roundf / 2) & (round_index < (roundf / 2 + roundp)):
-            state_ff[0] = poseidon_ff.s_box_ff(state_ff[0])
+        rconstants_ff = transform_array(cmp_constants)
+        pre_sparse_ff = transform_matrix(pre_sparse)
+        sparse_w_ff = transform_matrix(w_hat)
+        sparse_v_ff = transform_matrix(v_rest)
+        mds_matrix_ff = transform_matrix(basic.PrimeFieldOps.get_mds_matrix(t))
+        if isFull:
+            for i in range(t):
+                state_ff.append(context_vec[i].state_element)
+            state_ff = s_boxes_ff(state_ff)
+            if rf < 3:
+                state_ff = add_round_constants_ff(
+                    state_ff, rconstants_ff[(rf + 1) * t : (rf + 2) * t]
+                )
+                state_ff = mds_mixing_ff(state_ff, mds_matrix_ff)
+            elif rf == 3:
+                state_ff = add_round_constants_ff(
+                    state_ff, rconstants_ff[(rf + 1) * t : (rf + 2) * t]
+                )
+                state_ff = mds_mixing_ff(state_ff, pre_sparse_ff)
+            elif rf < 7:
+                base = (rf + 1) * t + MDSContext.roundp_map[t]
+                state_ff = add_round_constants_ff(
+                    state_ff, rconstants_ff[base : base + t]
+                )
+                state_ff = mds_mixing_ff(state_ff, mds_matrix_ff)
+            else:
+                state_ff = mds_mixing_ff(state_ff, mds_matrix_ff)
         else:
-            state_ff = poseidon_ff.s_boxes_ff(state_ff)
+            state_ff.append(context_vec[0].state_element)
+            for i in range(t - 1):
+                state_ff.append(context_vec[0].state_elements[i])
+            state_ff[0] = s_box_ff(state_ff[0])
+            state_ff[0].addassign(rconstants_ff[5 * t + rp])
+            state_ff = sparse_mds_mixing(state_ff, sparse_w_ff[rp], sparse_v_ff[rp])
 
-        state_ff = poseidon_ff.mds_mixing_ff(state_ff)
-
-        return state_ff
+        res = MDSContext(isFull, rf, rp, t, id)
+        res.copy_state_elements(state_ff)
+        return res
 
     async def drive_input_ports(self):
         """generate input signals"""
         dut = self.dut
         cases_count = 0
         while cases_count < CASES_NUM:
-            dut_inputs = Context.get_context_vec(cases_count)
+            dut_inputs = Context.get_context_vec(isFull=False, size=3, RP=1)
 
             # assign dut io port
 
@@ -80,12 +101,7 @@ class PoseidonThreadTester:
                     await RisingEdge(dut.clk)
 
             cases_count += 1
-            ref_output = MDSContext(
-                dut_inputs[0].round_index,
-                dut_inputs[0].state_size,
-                dut_inputs[0].state_id,
-            )
-            ref_output.copy_state_elements(self.ref_poseidon_thread(dut_inputs))
+            ref_output = self.ref_poseidon_thread(dut_inputs)
             self.ref_outputs.put(ref_output)
 
         dut.io_input_valid.value = False

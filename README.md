@@ -1,21 +1,17 @@
-## Poseidon-SpinalHDL
+# Poseidon-SpinalHDL
 
-This project  implements a hardware accelerator for ***Poseidon*** hash function, which is used in [Filecoin](https://filecoin.io/)'s sealing process. The hardware design is accomplished in [SpinalHDL](https://spinalhdl.github.io/SpinalDoc-RTD/master/index.html), a new HDL which is more efficient than verilog,  and is tested under [Cocotb](https://docs.cocotb.org/en/stable/#) testing framework. In addition to hardware implementation, this project also includes a python-based software implementation of ***Poseidon*** hash function, which is mainly used as a reference model for the verification of our hardware design. 
+This project  implements a hardware accelerator for hash function ***Poseidon***, which is used in  ***Filecoin***'s sealing process. The hardware design is accomplished in [SpinalHDL](https://spinalhdl.github.io/SpinalDoc-RTD/master/index.html), a new HDL which is more efficient than Verilog, and is tested under [cocotb](https://docs.cocotb.org/en/stable/#) testing framework. In addition to hardware implementation, this project also includes a python-based software implementation of ***Poseidon*** hash function, which can be used as a reference model for the verification of the hardware design. In this branch of the repository, optimized ***Poseidon*** with more complicated structure has been implemented, which can reach a higher throughput than the implementation of unoptimized one.
 
-In this branch, in order to simplify the difficulty of placement and routing during implementation, data flow in PoseidonThread module is wrapped with Flow interface which only consists of payload and valid and pipelines of PoseidonThread are without back pressure.
-
-## Poseidon Hash Function
-Poseidon is a new hash function which has been designed to be friendly to zero-knowledge applications, specifically, in minimizing the proof generation time, the proof size, and the verification time. For example, Poseidon hasher is used in the zero-knowledge proof system of FileCoin, an IPFS based decentralized storage network. The computation of Poseidon Hasher involves a large amount of compute-intensive modular multiplications, making it one of the performance bottlenecks in the mining process of FileCoin.
-
-The Poseidon hasher used in Filecoin takes a preimage of (t-1) prime field elements to a single field element. For Filecoin, t can be 3, 5, 9, and 12, which means that the length of preimages can be 2, 4, 8, and 11 and each prime field element is 255-bit. Firstly, the preimage of Poseidon is initiated to the internal state of t prime field elements through domain separation process. And then the internal state is transformed over R (R=RF+RP) rounds of constant addition, S-boxes, and MDS matrix mixing. Once all rounds have been performed, Poseidon outputs the second element of the internal state. The data flow of Poseidon is shown in the picture below:
+## Optimized Poseidon Hasher
+The calculation process of optimized **Poseidon** is similar to the unoptimized version. The optimized Poseidon hasher takes a preimage of (t-1) finite field elements to a single field element. For poseidon instances in Filecoin, t can be 3, 5, 9, or 12, which means that the length of preimages can be 2, 4, 8, and 11 and each prime field element is 255-bit. Firstly, the preimage is initiated to the internal state of t prime field elements through domain separation process. And then the internal state is added by round constants once, and after the addition it's transformed over R (R=RF+RP) rounds of S-boxes, Add Round Constants and MDS Mixing. After all rounds have been performed, Poseidon outputs the second element of the internal state. The specific data flow of optimized Poseidon is shown in the picture below:
 
 <div align=center>
-<img src="./images/Poseidon.png" style="zoom: 50%;" />
+<img src="./images/opt_poseidon.png" style="zoom:30%" />
 </div>
 
-From the picture above, we can find that Poseidon has two kinds of rounds, which are RP partial rounds and RF full rounds. Poseidon calculates half of the full rounds first and then all of partial rounds and finally the remaining half of the full rounds. And the only difference between the two is that: partial rounds only compute the first element of the internal state in SBox stages, but full rounds transform all elements through SBox.
+From the picture above, we can find that Poseidon has two kinds of rounds, including RP partial rounds and RF full rounds. Poseidon calculates first half of RF full rounds and then all of RP partial rounds and finally the remaining half of RF full rounds. And the main differences between the two include: 1) partial rounds only compute the first element of the internal state in SBox and Add Round Constants, but full rounds transform all elements in these two stages. 2) MDS matrices of full rounds are non-sparse, but matrices of partial rounds are sparse and different in every round.
+Compared with the unoptimized Poseidon, the optimized version uses the transformed rounds constants (containing fewer constants than the unoptimized), performs a round constant addition before the first round's S-box, performs round constant addition after every S-box other than the last round's, and uses different matrices for MDS Mixing in full and partial rounds.This change in MDS mixing from a non-sparse matrix to sparse matrices greatly reduces the number of multiplications in each round. The details of optimized and unoptimized Poseidon can be found in the spec of [neptune](https://github.com/filecoin-project/neptune/tree/master/spec), an open-source rust implementation of Poseidon.
 
-In the round constant addition stage, each prime field element is added by its corresponding round constant, and the constants are different in each round. For Filecoin’s Poseidon instantiation, S-Box computes the fifth power of the state element. And in the MDS Mixing stage, a vector-matrix multiplication is applied in the vector of internal state, where the MDS matrix is t*t and consistent in every round.
 
 In general, the Poseidon Hasher can be perceived as a simple stream of arithmetic operations, including addition and multiplication. And the design of Poseidon accelerator can be divided into two main parts:
 - design hardware arithmetic modules with high performance-area ratio
@@ -117,5 +113,7 @@ The specific operating mechanism of Poseidon accelerator includes:
 4) In PoseidonThread, SBox5Stage, AddRoundConstantStage corresponds to S-boxes and Add Round Constants in dataflow picture shown in Section2. And MDSMatrixMultiplier and MDSMatrixAdders accomplish the computation of MDSMixing in Poseidon hasher jointly. 
 5) DataDemux is a 1-2 router that transfers the output of PoseidonThread to AXI4Transmitter or StreamArbiter. If all rounds are completed, the internal state is transmitted to AXI4Transmitter, otherwise it loops back to StreamArbiter and starts computation of next round. 
 6) AXI4Transmitter outputs the hash result under AXI4 Stream protocol to XDMA IP and a fifo is implemented in it to reorder and buffer the input from LoopbackDemux.
+
+
 
 

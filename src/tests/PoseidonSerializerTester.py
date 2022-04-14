@@ -1,22 +1,54 @@
 import cocotb
 import random
 from cocotb.clock import Clock
-from cocotb.result import TestSuccess
+from cocotb.result import TestSuccess, TestFailure
 from cocotb.triggers import RisingEdge
 from queue import Empty, Queue
 
 from cocotb_test import simulator
 from poseidon_python import basic
 
-CASES_NUM = 500
+from BasicElements import MDSContext, Context
 
 
 class PoseidonSerializerTester:
-    def __init__(self, target):
+    def __init__(self, target, cases_num, size, isFull=None):
         self.dut = target
-        self.ref_outputs = Queue(maxsize=30)
-        self.buffer_size = 12  # the size of buffer in serializer
-        self.cases_count = 0
+        self.ref_outputs = Queue(maxsize=50)
+        self.input_cases = cases_num
+        if isFull:
+            self.output_cases = cases_num * size
+        else:
+            if size < 9:
+                self.output_cases = cases_num
+            else:
+                self.output_cases = cases_num * 2
+        self.isFull = isFull
+        self.size = size
+
+    def reference_model(self, context: MDSContext):
+        context_vec = []
+        isFull = context.isFull
+        size = context.state_size
+        roundf = context.full_round
+        roundp = context.partial_round
+        id = context.state_id
+        if isFull:
+            for i in range(size):
+                context_vec.append(Context(isFull, roundf, roundp, i, size, id))
+                context_vec[i].state_element.value = context.state_elements[i].value
+        else:
+            context_vec.append(Context(isFull, roundf, roundp, 0, size, id))
+            context_vec[0].state_element.value = context.state_elements[0].value
+            for i in range(size - 1):
+                context_vec[0].state_elements[i].value = context.state_elements[
+                    i + 1
+                ].value
+            if size >= 9:
+                context_vec.append(Context(isFull, roundf, roundp, 1, size, id))
+                context_vec[1].copy_state_elements(context_vec[0])
+
+        return context_vec
 
     async def reset_dut(self):
         self.dut.reset.value = 0
@@ -27,133 +59,69 @@ class PoseidonSerializerTester:
 
         self.dut.reset.value = 0
 
-    def get_random_input(self):
-        round_index = random.randint(1, 65)
-        state_size = random.randint(3, self.buffer_size)
-        state_id = random.randint(0, 31)
-        rand_vector = []
-        for i in range(self.buffer_size):
-            if i < state_size:
-                rand_vector.append(random.randint(0, basic.P - 1))
-            else:
-                rand_vector.append(0)
-        return round_index, state_size, state_id, rand_vector
-
     async def drive_input_ports(self):
         dut = self.dut
         """generate input signals"""
-        while self.cases_count < CASES_NUM:
-            round_index, state_size, state_id, state_elements = self.get_random_input()
+        cases_count = 0
+        while cases_count < self.input_cases:
+            dut_input = MDSContext()
+            dut_input.rand_mds_context(
+                isFull=self.isFull, size=self.size, id=cases_count
+            )
 
             # assign random values to dut input port
-            dut.io_parallelInput_valid.value = random.random() > 0.2
-            dut.io_parallelInput_payload_round_index.value = round_index
-            dut.io_parallelInput_payload_state_size.value = state_size
-            dut.io_parallelInput_payload_state_id.value = state_id
-
-            for i in range(self.buffer_size):
-                exec(
-                    "dut.io_parallelInput_payload_state_elements_{}.value = state_elements[{}]".format(
-                        i, i
-                    )
-                )
+            dut.io_input_valid.value = True  # random.random() > 0.2
+            dut_input.set_dut_ports(dut)
 
             await RisingEdge(dut.clk)
-            if (
-                dut.io_parallelInput_valid.value & dut.io_parallelInput_ready.value
-            ) == True:
-                self.cases_count += 1
-                for i in range(state_size):
-                    self.ref_outputs.put(
-                        [round_index, i, state_size, state_id, state_elements[i]]
-                    )
-                if state_size == 5:
-                    self.ref_outputs.put([round_index, 5, state_size, state_id, 0])
+            if (dut.io_input_valid.value & dut.io_input_ready.value) == True:
+                cases_count += 1
+                ref_outputs = self.reference_model(dut_input)
+                for element in ref_outputs:
+                    self.ref_outputs.put(element)
 
-        dut.io_parallelInput_valid.value = False
+        dut.io_input_valid.value = False
 
-    async def check_output_ports(self):
+    async def monitor_output_ports(self):
         """check output signals"""
         dut = self.dut
-
-        while True:
-            dut.io_serialOutput_ready.value = random.random() > 0.2
+        cases_count = 0
+        while cases_count < self.output_cases:
+            dut.io_output_ready.value = True  # random.random() > 0.2
             await RisingEdge(dut.clk)
 
-            if (
-                dut.io_serialOutput_ready.value & dut.io_serialOutput_valid.value
-                == True
-            ):
-                rindex, sindex, size, id, element = self.ref_outputs.get()
-                dut_rindex = int(dut.io_serialOutput_payload_round_index.value)
-                dut_sindex = int(dut.io_serialOutput_payload_state_index.value)
-                dut_size = int(dut.io_serialOutput_payload_state_size.value)
-                dut_id = int(dut.io_serialOutput_payload_state_id.value)
-                dut_element = int(dut.io_serialOutput_payload_state_element.value)
-                assert (
-                    dut_rindex == rindex
-                ), "case num {}: round_index is wrong\nref:{}\ndut:{}".format(
-                    self.cases_count, rindex, dut_rindex
-                )
+            if (dut.io_output_ready.value & dut.io_output_valid.value) == True:
+                ref_output = self.ref_outputs.get()
+                dut_output = Context()
+                dut_output.get_dut_ports(dut)
 
-                assert (
-                    dut_sindex == sindex
-                ), "case num {}: state_index is wrong\nref:{}\ndut:{}".format(
-                    self.cases_count, sindex, dut_rindex
-                )
+                if not dut_output.check_context_equal(ref_output):
+                    print("REF: ")
+                    ref_output.print_context_info()
+                    print("DUT: ")
+                    dut_output.print_context_info()
+                    raise TestFailure(f"test case {cases_count} failed!!!")
+                cases_count = cases_count + 1
 
-                assert (
-                    dut_size == size
-                ), "case num {}: state_size is wrong\nref:{}\ndut:{}".format(
-                    self.cases_count, size, dut_size
-                )
-
-                assert (
-                    dut_id == id
-                ), "case num {}: state_id is wrong\nref:{}\ndut:{}".format(
-                    self.cases_count, id, dut_id
-                )
-
-                assert (
-                    dut_element == element
-                ), "case num {}: state_element is wrong\nref:{}\ndut:{}".format(
-                    self.cases_count, hex(element), hex(dut_element)
-                )
-
-            if (self.cases_count == CASES_NUM) & self.ref_outputs.empty():
-                raise TestSuccess(" pass {} test cases".format(CASES_NUM))
+        raise TestSuccess(" pass {} test cases".format(self.input_cases))
 
 
-@cocotb.test(timeout_time=400000, timeout_unit="ns")
+@cocotb.test(timeout_time=500000, timeout_unit="ns")
 async def PoseidonSerializerTest(dut):
 
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
-    tester = PoseidonSerializerTester(dut)
+    tester = PoseidonSerializerTester(dut, 500, 12, isFull=True)
 
     # set default value to input ports of dut
-    dut.io_parallelInput_valid.value = False
-    dut.io_parallelInput_payload_round_index.value = 0
-    dut.io_parallelInput_payload_state_size.value = 0
-    dut.io_parallelInput_payload_state_id.value = 0
-    dut.io_serialOutput_ready.value = False
-    for i in range(tester.buffer_size):
-        exec("dut.io_parallelInput_payload_state_elements_{}.value = 0".format(i))
+    dut.io_input_valid.value = False
+    dut.io_output_ready.value = False
+    init_context = MDSContext()
+    init_context.set_dut_ports(dut)
 
     await tester.reset_dut()
-
     # start testing
     await cocotb.start(tester.drive_input_ports())
-    await cocotb.start(tester.check_output_ports())
+    await cocotb.start(tester.monitor_output_ports())
 
     while True:
         await RisingEdge(dut.clk)
-
-
-# pytest
-def test_PoseidonSerializer():
-    simulator.run(
-        verilog_sources=["../main/verilog/PoseidonSerializer.v"],
-        toplevel="PoseidonSerializer",
-        module="PoseidonSerializerTester",
-        python_search="./src/reference_model/",
-    )
