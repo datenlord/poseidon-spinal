@@ -8,7 +8,7 @@ from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic
 
 
-CASES_NUM = 10
+CASES_NUM = 15
 
 
 class PoseidonTopLevelTester:
@@ -116,12 +116,19 @@ async def PoseidonTopLevelTest(dut):
     # rindex = [0,0,0,0]
     round_max = -1
     cycle = 0
+    #fifo_count = 0
     while True:
         await RisingEdge(dut.clk)
 
+        # fifo counter
+        # temp_count = int(dut.poseidonLoop_1.loopback_fifo_io_occupancy)
+        # if(temp_count > fifo_count):
+        #     fifo_count = temp_count
+        #     print(f"fifo occupancy: {fifo_count}")
+
         cycle = cycle + 1
         loop = dut.poseidonLoop_1
-        thread = loop.poseidonThread_1
+        #thread = loop.poseidonThread_1
         # # if(loop.modAdderPipedFlow_1_io_output_valid.value):
         # #     print(hex(int(loop.modAdderPipedFlow_1_io_output_payload_res.value)))
 

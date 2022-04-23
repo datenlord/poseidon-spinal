@@ -194,15 +194,16 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
 
   val threadOutput = PoseidonThread(g, preRoundConstStage.output)
   //
-  val (threadOutBuffer, occupancy) =
-    threadOutput.queueWithOccupancy(g.flowQueue)
-  val demuxInst = LoopbackDeMux(g)
+  val fifoIPConfig1 = FifoIPConfig(byteWidth = 193, depth = 64, isSim = g.isSim)
+  val threadOutBuffer = BundleFifo(threadOutput.toStream, fifoIPConfig1)
 
+  val demuxInst = LoopbackDeMux(g)
   demuxInst.io.input << threadOutBuffer
   val loopback = demuxInst.io.output0.s2mPipe().m2sPipe()
   io.output << demuxInst.io.output1.stage() //add a stage of register
 
-  loopbackBuffer << loopback.queueLowLatency(200)
+  val fifoIPConfig2 = FifoIPConfig(byteWidth = 193, depth = 256, isSim = g.isSim)
+  loopbackBuffer << BundleFifo(loopback, fifoIPConfig2)
 }
 
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {

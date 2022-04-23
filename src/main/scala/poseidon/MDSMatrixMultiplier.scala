@@ -62,31 +62,34 @@ case class MDSMatrixMultiplier( // 49 stages
 
   val constants = MDSConstantMem(g)
   constants.io.addr.assignSomeByName(io.input.payload)
+
+  val inputDelayed = io.input.stage().stage().stage().stage()
   val mulInputs = for (i <- 0 until g.sizeMax) yield {
-    io.input.translateWith(
-      operands(io.input.stateElement, constants.io.data(i))
+    inputDelayed.translateWith(
+      operands(inputDelayed.stateElement, constants.io.data(i))
     )
   }
 
-  when(!io.input.isFull) {
-    when(io.input.stateSize === 3) {
-      for (i <- 3 until 5) mulInputs(i).op1 := io.input.stateElements(i - 3)
-    } elsewhen (io.input.stateSize === 5) {
-      for (i <- 5 until 9) mulInputs(i).op1 := io.input.stateElements(i - 5)
-    } elsewhen (io.input.stateIndex === 1) {
+  when(!inputDelayed.isFull) {
+    when(inputDelayed.stateSize === 3) {
+      for (i <- 3 until 5) mulInputs(i).op1 := inputDelayed.stateElements(i - 3)
+    } elsewhen (inputDelayed.stateSize === 5) {
+      for (i <- 5 until 9) mulInputs(i).op1 := inputDelayed.stateElements(i - 5)
+    } elsewhen (inputDelayed.stateIndex === 1) {
       for (i <- 1 until g.sizeMax)
-        mulInputs(i).op1 := io.input.stateElements(i - 1)
+        mulInputs(i).op1 := inputDelayed.stateElements(i - 1)
     }
 
   }
 
+
   // modular multipliers: 47 stages
-  val mulOutputs = mulInputs.map(MontgomeryMultFlow(mulConfig, ipConfig, _))
+  val mulOutputs = mulInputs.map( MontgomeryMultFlow(mulConfig, ipConfig, _) )
 
   val mulContext = MDSMulContext(g)
-  mulContext.assignSomeByName(io.input.payload)
+  mulContext.assignSomeByName(inputDelayed.payload)
   when(
-    !io.input.isFull && io.input.stateSize > 5 && io.input.stateIndex === 1
+    !inputDelayed.isFull && inputDelayed.stateSize > 5 && inputDelayed.stateIndex === 1
   ) {
     mulContext.stateElements.assignFromBits(
       B(0, (g.sizeMax - 1) * g.dataWidth bits)
@@ -104,22 +107,22 @@ case class MDSMatrixMultiplier( // 49 stages
         mulContextDelayed.stateElements(i - 1)
       )
 
-  val mulOutput0 = Flow(results(g.dataWidth))
-  mulOutput0.valid := mulOutputs.map(_._1.valid).asBits().andR
-  mulOutput0.res := mulOutputs(0)._1.res
-  val mulOutput0Delayed = Delay(mulOutput0, adderOutputs(0)._2)
+  
+  val validDelayed = Delay(
+    mulOutputs.map(_._1.valid).asBits().andR,
+    adderOutputs(0)._2,
+    init=False)
+  val mulOutput0Delayed = Delay(mulOutputs(0)._1.res, adderOutputs(0)._2)
   val addContext = MDSAddContext(g)
   addContext.assignSomeByName(mulContextDelayed)
   val addContextDelayed = Delay(addContext, adderOutputs(0)._2)
 
-  io.output := mulOutput0Delayed.translateWith {
-    val payload = MDSContext(g)
-    payload.assignSomeByName(addContextDelayed)
-    payload.stateElements.assignFromBits(
-      adderOutputs.map(_._1).asBits() ## mulOutput0Delayed.res
-    )
-    payload
-  }
+  io.output.valid := validDelayed
+  io.output.payload.assignSomeByName(addContextDelayed)
+  io.output.stateElements.assignFromBits(
+    adderOutputs.map(_._1).asBits() ## mulOutput0Delayed
+  )
+
 }
 
 object MDSMatrixMultiplierVerilog {

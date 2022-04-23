@@ -117,8 +117,8 @@ case class MultiplierIPFlow(g: MulIPConfig, isSim: Boolean) extends Component {
     MultiplierIP(g, io.input.op1, io.input.op2)
   }
 
-  val initValue = if (isSim) False else null
-  val validPipe = Delay(io.input.valid, g.pipeStages, init = initValue)
+  
+  val validPipe = Delay(io.input.valid, g.pipeStages, init = False)
   io.output.valid := validPipe
   io.output.res := mulRes
 }
