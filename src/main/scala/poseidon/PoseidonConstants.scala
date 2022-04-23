@@ -50,16 +50,18 @@ case class MatrixConstantMem(g: MatMemConfig) extends Component {
     val data = Vec((out UInt (g.dataWidth bits)), g.column)
     val addr = in UInt (log2Up(g.row) bits)
   }
-
+  
   val mdsMatrix = ReadConstantsFromFile.matrix(g.row, g.column, g.filePath)
   val matTranspose = for (i <- 0 until g.column) yield mdsMatrix.map(_(i))
   val mdsMem = matTranspose.map(Mem(UInt(g.dataWidth bits), _))
 
+  val tempAddr = RegNext(io.addr)
   if (g.memType) {
-    (io.data lazyZip mdsMem).foreach(_ := _.readAsync(io.addr))
+    (io.data lazyZip mdsMem).foreach(_ := _.readAsync(tempAddr))
   } else {
-    (io.data lazyZip mdsMem).foreach(_ := _.readSync(io.addr))
+    (io.data lazyZip mdsMem).foreach(_ := _.readSync(tempAddr))
   }
+
 }
 
 object PreRoundConstants {
@@ -308,7 +310,9 @@ case class RoundConstantMem(g: PoseidonGenerics) extends Component {
   io.data := Mux(io.addr.isFull, fullConstant, partialConstant)
 }
 
+
 object MDSConstantMem {
+  val latency = 4
   def apply(g: PoseidonGenerics, addr: ConstantAddrPort): Vec[UInt] = {
     val memInst = MDSConstantMem(g)
     memInst.io.addr := addr
@@ -323,113 +327,141 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
     val data = Vec(out UInt (g.dataWidth bits), g.sizeMax)
   }
 
-  // full round Matrix constants
-  val sizeSelect = PoseidonParam.sizeRange.map(_ === io.addr.stateSize)
   val outputWidth = g.dataWidth * g.sizeMax
 
-  // mds matrix
-  val mdsPath = "./poseidon_constants/mds_matrixs_ff/mds_matrix_ff_%d.txt"
-  val mdsConfigs = PoseidonParam.sizeRange.map(size =>
-    MatMemConfig(size, size, g.dataWidth, mdsPath.format(size))
+  val fullRound = new Area{
+    // full round Matrix constants
+    val sizeDelayed = Delay(io.addr.stateSize, 1)
+    val sizeSelect = PoseidonParam.sizeRange.map(_ === sizeDelayed)
+
+    // mds matrix
+    val mdsPath = "./poseidon_constants/mds_matrixs_ff/mds_matrix_ff_%d.txt"
+    val mdsConfigs = PoseidonParam.sizeRange.map(size =>
+      MatMemConfig(size, size, g.dataWidth, mdsPath.format(size))
+    )
+    val mdsOutputs = mdsConfigs.map(
+      MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
+    )
+    val mdsOutput = RegNext(MuxOH(sizeSelect, mdsOutputs))
+
+
+    // pre sparse matrix
+    val preSparsePath =
+      "./poseidon_constants/pre_sparse_matrix_ff/pre_sparse_matrix_ff_%d.txt"
+    val preSparseConfigs = PoseidonParam.sizeRange.map(size =>
+      MatMemConfig(size, size, g.dataWidth, preSparsePath.format(size))
+    )
+    val preSparseOutputs = preSparseConfigs.map(
+      MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
+    )
+    val preSparseOutput = RegNext(MuxOH(sizeSelect, preSparseOutputs))
+
+    val fullRoundDelayed = Delay(io.addr.fullRound, 2)
+    val output = RegNext(
+      Mux(
+        fullRoundDelayed === PoseidonParam.halfRoundf - 1,
+        preSparseOutput,
+        mdsOutput
+      )
+    )
+
+  }
+
+  val partialRound = new Area{
+      // sparse mds matrix
+    val sparseMatPath = "./poseidon_constants/sparse_matrix_ff/sparse_matrix_ff_%d.txt"
+    val sparseMatT3 = RegNext(
+
+      MatrixConstantMem(
+        MatMemConfig(
+          PoseidonParam.partialRoundMap(3),
+          5,
+          g.dataWidth,
+          sparseMatPath.format(3)
+        ),
+        io.addr.partialRound.resized
+      )
+    )
+
+    val sparseMatT5 = RegNext(
+      MatrixConstantMem(
+        MatMemConfig(
+          PoseidonParam.partialRoundMap(5),
+          9,
+          g.dataWidth,
+          sparseMatPath.format(5)
+        ),
+        io.addr.partialRound.resized
+      )
+    )
+
+    val sparseRowPath =
+      "./poseidon_constants/sparse_matrix_ff/sparse_matrix_row_ff_%d.txt"
+    val sparseRowT9 = MatrixConstantMem(
+      MatMemConfig(
+        PoseidonParam.partialRoundMap(9),
+        9,
+        g.dataWidth,
+        sparseRowPath.format(9)
+      ),
+      io.addr.partialRound.resized
+    ).asBits
+
+    val sparseRowT12 = MatrixConstantMem(
+      MatMemConfig(
+        PoseidonParam.partialRoundMap(12),
+        12,
+        g.dataWidth,
+        sparseRowPath.format(12)
+      ),
+      io.addr.partialRound.resized
+    ).asBits
+
+    val sparseColPath =
+      "./poseidon_constants/sparse_matrix_ff/sparse_matrix_column_ff_%d.txt"
+
+    val sparseColT9 = MatrixConstantMem(
+      MatMemConfig(
+        PoseidonParam.partialRoundMap(9),
+        9,
+        g.dataWidth,
+        sparseColPath.format(9)
+      ),
+      io.addr.partialRound.resized
+    ).asBits
+
+    val sparseCol12 = MatrixConstantMem(
+      MatMemConfig(
+        PoseidonParam.partialRoundMap(12),
+        12,
+        g.dataWidth,
+        sparseColPath.format(12)
+      ),
+      io.addr.partialRound.resized
+    ).asBits
+
+
+    val indexDelayed = Delay(io.addr.stateIndex, 1)
+    val sparseMatT9  = RegNext(Mux(indexDelayed === 0, sparseRowT9, sparseColT9))
+    val sparseMatT12 = RegNext(Mux(indexDelayed === 0, sparseRowT12, sparseCol12))
+    val sparseOutputs = Vec(
+      sparseMatT3.asBits.resize(outputWidth),
+      sparseMatT5.asBits.resize(outputWidth),
+      sparseMatT9.resize(outputWidth),
+      sparseMatT12
+    )
+    
+    val sizeDelayed = Delay(io.addr.stateSize, 2)
+    val sizeSelect = PoseidonParam.sizeRange.map(_ === sizeDelayed)
+    val output = RegNext(MuxOH(sizeSelect, sparseOutputs))
+  }
+
+  val isFullDelayed = Delay(io.addr.isFull, 3)
+  io.data.assignFromBits(
+    RegNext(
+      Mux(isFullDelayed, fullRound.output, partialRound.output)
+    )
   )
-  val mdsOutputs = mdsConfigs.map(
-    MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
-  )
-  val mdsOutput = MuxOH(sizeSelect, mdsOutputs)
-
-  // pre sparse matrix
-  val preSparsePath =
-    "./poseidon_constants/pre_sparse_matrix_ff/pre_sparse_matrix_ff_%d.txt"
-  val preSparseConfigs = PoseidonParam.sizeRange.map(size =>
-    MatMemConfig(size, size, g.dataWidth, preSparsePath.format(size))
-  )
-  val preSparseOutputs = preSparseConfigs.map(
-    MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
-  )
-  val preSparseOutput = MuxOH(sizeSelect, preSparseOutputs)
-
-  val fullRound = Mux(
-    io.addr.fullRound === PoseidonParam.halfRoundf - 1,
-    preSparseOutput,
-    mdsOutput
-  )
-
-  // sparse mds matrix
-  val sparseMatPath =
-    "./poseidon_constants/sparse_matrix_ff/sparse_matrix_ff_%d.txt"
-  val sparseMatT3 = MatrixConstantMem(
-    MatMemConfig(
-      PoseidonParam.partialRoundMap(3),
-      5,
-      g.dataWidth,
-      sparseMatPath.format(3)
-    ),
-    io.addr.partialRound.resized
-  ).asBits.resize(outputWidth)
-
-  val sparseMatT5 = MatrixConstantMem(
-    MatMemConfig(
-      PoseidonParam.partialRoundMap(5),
-      9,
-      g.dataWidth,
-      sparseMatPath.format(5)
-    ),
-    io.addr.partialRound.resized
-  ).asBits.resize(outputWidth)
-
-  val sparseRowPath =
-    "./poseidon_constants/sparse_matrix_ff/sparse_matrix_row_ff_%d.txt"
-  val sparseRowT9 = MatrixConstantMem(
-    MatMemConfig(
-      PoseidonParam.partialRoundMap(9),
-      9,
-      g.dataWidth,
-      sparseRowPath.format(9)
-    ),
-    io.addr.partialRound.resized
-  ).asBits.resize(outputWidth)
-  val sparseRowT12 = MatrixConstantMem(
-    MatMemConfig(
-      PoseidonParam.partialRoundMap(12),
-      12,
-      g.dataWidth,
-      sparseRowPath.format(12)
-    ),
-    io.addr.partialRound.resized
-  ).asBits
-
-  val sparseColPath =
-    "./poseidon_constants/sparse_matrix_ff/sparse_matrix_column_ff_%d.txt"
-
-  val sparseColT9 = MatrixConstantMem(
-    MatMemConfig(
-      PoseidonParam.partialRoundMap(9),
-      9,
-      g.dataWidth,
-      sparseColPath.format(9)
-    ),
-    io.addr.partialRound.resized
-  ).asBits.resize(outputWidth)
-
-  val sparseCol12 = MatrixConstantMem(
-    MatMemConfig(
-      PoseidonParam.partialRoundMap(12),
-      12,
-      g.dataWidth,
-      sparseColPath.format(12)
-    ),
-    io.addr.partialRound.resized
-  ).asBits
-
-  val sparseOutputs = Vec(
-    sparseMatT3,
-    sparseMatT5,
-    Mux(io.addr.stateIndex === 0, sparseRowT9, sparseColT9),
-    Mux(io.addr.stateIndex === 0, sparseRowT12, sparseCol12)
-  )
-  val partialRound = MuxOH(sizeSelect, sparseOutputs)
-
-  io.data.assignFromBits(Mux(io.addr.isFull, fullRound, partialRound))
 }
 
 object MatrixConstantMemVerilog {

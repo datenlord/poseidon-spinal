@@ -12,7 +12,7 @@ from poseidon_python.poseidon_ff import *
 
 from BasicElements import Context, MDSContext
 
-CASES_NUM = 5000
+CASES_NUM = 2000
 
 
 class MDSMatrixMultiplierTester:
