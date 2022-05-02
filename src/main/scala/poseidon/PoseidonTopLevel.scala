@@ -37,17 +37,14 @@ object PoseidonParam {
     9 -> 57,
     12 -> 57
   )
-
   val modulus = BigInt(
     "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
     16
   )
-
   val compensation = BigInt(
     "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
     16
   )
-
   val modInverse = BigInt(
     "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
     16
@@ -55,13 +52,13 @@ object PoseidonParam {
 }
 
 case class PoseidonGenerics(
-    sizeMax: Int, // maximum size of internal state
-    roundp: Int, // maximum number of partial rounds
-    roundf: Int, // maxium number of full rounds
-    dataWidth: Int, // width of state element
-    idWidth: Int, // width of state id
-    isSim: Boolean, // indicate whether the generated codes are used for simulation
-    loopNum: Int = 1, // the number of PoseidonLoop
+    sizeMax: Int,    // maximum size of internal state
+    roundp: Int,     // maximum number of partial rounds
+    roundf: Int,     // maxium number of full rounds
+    dataWidth: Int,  // width of state element
+    idWidth: Int,    // width of state id
+    isSim: Boolean,  // indicate whether the generated codes are used for simulation
+    loopNum: Int = 1,  // the number of PoseidonLoop
     constantMemType: Boolean = true, // indicate round constants' memory type
     // true:distributed memory false:block memory
     transmitterQueue: Int = 10, // the depth of queue in AXI4Transmitter
@@ -156,11 +153,10 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
   )
 
   val loopbackBuffer = Stream(MDSContext(g))
-  //val loopbackMuxed = StreamArbiterFactory.lowerFirst.onArgs(directLoopback, bufferLoopback)
-  // serialize the parallel data from loopInput or loopback
+
   val dataMuxed =
     StreamArbiterFactory.lowerFirst.onArgs(loopbackBuffer, io.input)
-  //
+  //serialize the parallel data from loopInput or loopback
   val serializerOutput = PoseidonSerializer(g, dataMuxed) // 1 stage
 
   //add pre round constants
@@ -193,17 +189,15 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
   }
 
   val threadOutput = PoseidonThread(g, preRoundConstStage.output)
-  //
-  val fifoIPConfig1 = FifoIPConfig(byteWidth = 193, depth = 64, isSim = g.isSim)
-  val threadOutBuffer = BundleFifo(threadOutput.toStream, fifoIPConfig1)
+
 
   val demuxInst = LoopbackDeMux(g)
-  demuxInst.io.input << threadOutBuffer
+  demuxInst.io.input << threadOutput.toStream
   val loopback = demuxInst.io.output0.s2mPipe().m2sPipe()
   io.output << demuxInst.io.output1.stage() //add a stage of register
 
-  val fifoIPConfig2 = FifoIPConfig(byteWidth = 193, depth = 256, isSim = g.isSim)
-  loopbackBuffer << BundleFifo(loopback, fifoIPConfig2)
+  val fifoIPConfig = FifoIPConfig(byteWidth = 193, depth = 256, isSim = g.isSim, name="axis_data_fifo_0")
+  loopbackBuffer << BundleFifo(loopback, fifoIPConfig)
 }
 
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
@@ -245,16 +239,22 @@ object PoseidonTopLevelVerilog {
       roundf = 8,
       dataWidth = 255,
       idWidth = 8,
-      isSim = true,
+      isSim = false,
       loopNum = 1,
       constantMemType = true,
       transmitterQueue = 8,
       flowQueue = 20
     )
 
+    val clockDomainConfig = ClockDomainConfig(
+      resetKind = SYNC,
+      resetActiveLevel = LOW
+    )
+
     SpinalConfig(
       mode = Verilog,
-      targetDirectory = "./src/main/verilog/"
+      targetDirectory = "./src/main/verilog/",
+      defaultConfigForClockDomains = clockDomainConfig
     ).generate(new PoseidonTopLevel(config))
   }
 }

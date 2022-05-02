@@ -2,12 +2,13 @@ package poseidon
 import spinal.core._
 import spinal.lib._
 
-case class FifoIPConfig(byteWidth:Int, depth:Int, isSim:Boolean){
+case class FifoIPConfig(byteWidth:Int, depth:Int, isSim:Boolean, name:String){
   val width = byteWidth * 8
 }
+
 object AXISDataFifoIP{
   def apply(g:FifoIPConfig, input:Stream[Bits]):Stream[Bits]={
-    val fifoInst = AXISDataFifoIP(g)
+    val fifoInst = AXISDataFifoIP(g).setDefinitionName(g.name)
     fifoInst.io.input << input
     fifoInst.io.output
   }
@@ -20,8 +21,9 @@ case class AXISDataFifoIP( g:FifoIPConfig ) extends BlackBox{
     val clk = in Bool()
     val resetn = in Bool()
   }
-  // Map clock domain
-  mapClockDomain(clock = io.clk, reset = io.resetn)
+
+  
+  mapCurrentClockDomain(clock = io.clk, reset = io.resetn, resetActiveLevel= LOW)
 
   // Remove io_ prefix
   noIoPrefix()
@@ -36,13 +38,14 @@ case class AXISDataFifoIP( g:FifoIPConfig ) extends BlackBox{
     io.output.ready.setName("m_axis_tready")
     io.output.payload.setName("m_axis_tdata")
 
-    io.clk.setName("s_axis_aresetn")
-    io.resetn.setName("s_axis_aclk")
+    io.clk.setName("s_axis_aclk")
+    io.resetn.setName("s_axis_aresetn")
   }
 
   // Execute the function renameIO after the creation of the component
   addPrePopTask(() => renameIO())
 }
+
 
 object BundleFifo{
   def apply[T<:Bundle](input:Stream[T], ipConfig:FifoIPConfig):Stream[T] = {
@@ -87,10 +90,10 @@ object BundleFifoVerilog{
       roundf = 8,
       dataWidth = 255,
       idWidth = 8,
-      isSim = true
+      isSim = false
     )
 
-    val ipConfig = FifoIPConfig( byteWidth = 193, depth = 256, isSim = false)
+    val ipConfig = FifoIPConfig( byteWidth = 193, depth = 256, isSim = false, name="axis_data_fifo_0")
     val clockDomainConfig = ClockDomainConfig(
       resetKind = SYNC,
       resetActiveLevel = LOW
@@ -103,3 +106,5 @@ object BundleFifoVerilog{
     ).generate(BundleFifo(MDSContext(poseidonConfig), ipConfig))
   }
 }
+
+
