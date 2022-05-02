@@ -34,7 +34,7 @@ case class MatMemConfig(
     column: Int,
     dataWidth: Int,
     filePath: String,
-    memType: Boolean = true
+    memType: Boolean = false
 )
 object MatrixConstantMem {
   def apply(config: MatMemConfig, addr: UInt): Vec[UInt] = {
@@ -55,11 +55,17 @@ case class MatrixConstantMem(g: MatMemConfig) extends Component {
   val matTranspose = for (i <- 0 until g.column) yield mdsMatrix.map(_(i))
   val mdsMem = matTranspose.map(Mem(UInt(g.dataWidth bits), _))
 
-  val tempAddr = RegNext(io.addr)
+  // TODO: cut high fan out
+  val tempAddrVec = Vec(UInt(log2Up(g.row) bits), g.column)
+  tempAddrVec.foreach( _ := RegNext(io.addr))
   if (g.memType) {
-    (io.data lazyZip mdsMem).foreach(_ := _.readAsync(tempAddr))
+    for(i <- 0 until g.column){
+      io.data(i) := mdsMem(i).readAsync(tempAddrVec(i))
+    }
   } else {
-    (io.data lazyZip mdsMem).foreach(_ := _.readSync(tempAddr))
+    for(i <- 0 until g.column){
+      io.data(i) := mdsMem(i).readSync(tempAddrVec(i))
+    }
   }
 
 }
@@ -312,7 +318,7 @@ case class RoundConstantMem(g: PoseidonGenerics) extends Component {
 
 
 object MDSConstantMem {
-  val latency = 4
+  val latency = 5
   def apply(g: PoseidonGenerics, addr: ConstantAddrPort): Vec[UInt] = {
     val memInst = MDSConstantMem(g)
     memInst.io.addr := addr
@@ -331,8 +337,8 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
 
   val fullRound = new Area{
     // full round Matrix constants
-    val sizeDelayed = Delay(io.addr.stateSize, 1)
-    val sizeSelect = PoseidonParam.sizeRange.map(_ === sizeDelayed)
+    val sizeDelayed1 = Delay(io.addr.stateSize, 2)
+    val sizeSelect1 = PoseidonParam.sizeRange.map(_ === sizeDelayed1)
 
     // mds matrix
     val mdsPath = "./poseidon_constants/mds_matrixs_ff/mds_matrix_ff_%d.txt"
@@ -342,10 +348,13 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
     val mdsOutputs = mdsConfigs.map(
       MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
     )
-    val mdsOutput = RegNext(MuxOH(sizeSelect, mdsOutputs))
+    val mdsOutput = RegNext(MuxOH(sizeSelect1, mdsOutputs))
 
 
     // pre sparse matrix
+    val sizeDelayed2 = Delay(io.addr.stateSize, 2)
+    val sizeSelect2 = PoseidonParam.sizeRange.map(_ === sizeDelayed2)
+
     val preSparsePath =
       "./poseidon_constants/pre_sparse_matrix_ff/pre_sparse_matrix_ff_%d.txt"
     val preSparseConfigs = PoseidonParam.sizeRange.map(size =>
@@ -354,9 +363,9 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
     val preSparseOutputs = preSparseConfigs.map(
       MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
     )
-    val preSparseOutput = RegNext(MuxOH(sizeSelect, preSparseOutputs))
+    val preSparseOutput = RegNext(MuxOH(sizeSelect2, preSparseOutputs))
 
-    val fullRoundDelayed = Delay(io.addr.fullRound, 2)
+    val fullRoundDelayed = Delay(io.addr.fullRound, 3)
     val output = RegNext(
       Mux(
         fullRoundDelayed === PoseidonParam.halfRoundf - 1,
@@ -430,7 +439,7 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
       io.addr.partialRound.resized
     ).asBits
 
-    val sparseCol12 = MatrixConstantMem(
+    val sparseColT12 = MatrixConstantMem(
       MatMemConfig(
         PoseidonParam.partialRoundMap(12),
         12,
@@ -441,9 +450,10 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
     ).asBits
 
 
-    val indexDelayed = Delay(io.addr.stateIndex, 1)
-    val sparseMatT9  = RegNext(Mux(indexDelayed === 0, sparseRowT9, sparseColT9))
-    val sparseMatT12 = RegNext(Mux(indexDelayed === 0, sparseRowT12, sparseCol12))
+    val indexDelayed1 = Delay(io.addr.stateIndex, 2)
+    val indexDelayed2 = Delay(io.addr.stateIndex, 2)
+    val sparseMatT9  = RegNext(Mux(indexDelayed1 === 0, sparseRowT9, sparseColT9))
+    val sparseMatT12 = RegNext(Mux(indexDelayed2 === 0, sparseRowT12, sparseColT12))
     val sparseOutputs = Vec(
       sparseMatT3.asBits.resize(outputWidth),
       sparseMatT5.asBits.resize(outputWidth),
@@ -451,12 +461,12 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
       sparseMatT12
     )
     
-    val sizeDelayed = Delay(io.addr.stateSize, 2)
+    val sizeDelayed = Delay(io.addr.stateSize, 3)
     val sizeSelect = PoseidonParam.sizeRange.map(_ === sizeDelayed)
     val output = RegNext(MuxOH(sizeSelect, sparseOutputs))
   }
 
-  val isFullDelayed = Delay(io.addr.isFull, 3)
+  val isFullDelayed = Delay(io.addr.isFull, 4)
   io.data.assignFromBits(
     RegNext(
       Mux(isFullDelayed, fullRound.output, partialRound.output)

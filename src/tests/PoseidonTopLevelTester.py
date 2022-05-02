@@ -18,14 +18,14 @@ class PoseidonTopLevelTester:
         self.ref_outputs = Queue(maxsize=500)
 
     async def reset_dut(self):
-        """reset the dut"""
-        self.dut.reset.value = 0
+        """reset the dut reset active level: low"""
+        self.dut.resetn.value = 1
         await RisingEdge(self.dut.clk)
-        self.dut.reset.value = 1
+        self.dut.resetn.value = 0
         for i in range(2):
             await RisingEdge(self.dut.clk)
 
-        self.dut.reset.value = 0
+        self.dut.resetn.value = 1
 
     def get_random_values(self, cases_count):
         """get random input values"""

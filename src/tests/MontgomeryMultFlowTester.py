@@ -7,7 +7,7 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from cocotb_test import simulator
 
-CASES_NUM = 1000  # the number of test cases
+CASES_NUM = 2000  # the number of test cases
 
 
 class MontgomeryMultFlowTester:

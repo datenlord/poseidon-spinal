@@ -63,7 +63,7 @@ case class MDSMatrixMultiplier( // 49 stages
   val constants = MDSConstantMem(g)
   constants.io.addr.assignSomeByName(io.input.payload)
 
-  val inputDelayed = io.input.stage().stage().stage().stage()
+  val inputDelayed = io.input.stage().stage().stage().stage().stage()
   val mulInputs = for (i <- 0 until g.sizeMax) yield {
     inputDelayed.translateWith(
       operands(inputDelayed.stateElement, constants.io.data(i))
@@ -82,9 +82,10 @@ case class MDSMatrixMultiplier( // 49 stages
 
   }
 
-
+  // TODO: cut the critical path
   // modular multipliers: 47 stages
-  val mulOutputs = mulInputs.map( MontgomeryMultFlow(mulConfig, ipConfig, _) )
+  val mulInputsTemp = mulInputs.map(_.stage())
+  val mulOutputs = mulInputsTemp.map( MontgomeryMultFlow(mulConfig, ipConfig, _) )
 
   val mulContext = MDSMulContext(g)
   mulContext.assignSomeByName(inputDelayed.payload)
@@ -95,7 +96,7 @@ case class MDSMatrixMultiplier( // 49 stages
       B(0, (g.sizeMax - 1) * g.dataWidth bits)
     )
   }
-  val mulContextDelayed = Delay(mulContext, mulOutputs(0)._2)
+  val mulContextDelayed = Delay(mulContext, mulOutputs(0)._2 + 1)
 
   // modular adders: 2 stages
   val adderOutputs =

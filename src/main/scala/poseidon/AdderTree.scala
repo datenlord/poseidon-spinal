@@ -91,19 +91,20 @@ case class ModAdderPiped(g: ModAdderConfig, ipConfig: AdderIPConfig)
   val latency = 2 * ipConfig.latency
 }
 
+// SpinalHDL provide reduceBalanceTree that can implement adder tree 
+// def reduceBalancedTree(op: (T, T) => T): T
+// operands.reduceBalancedTree(_+_)
+
+// adderTree implemented through recursion of scala
 object AdderTreeGenerator {
-  def apply(
-      g: ModAdderConfig,
-      ip: AdderIPConfig,
-      input: Vec[UInt]
-  ): (UInt, Int) = {
+  def apply( g: ModAdderConfig, ip: AdderIPConfig, input: Vec[UInt])
+  : (UInt, Int) = {
     val opNum: Int = input.length
-    if (opNum.equals(2)) {
+    if (opNum == 2) {
       val output = ModAdderPiped(g, ip, input(0), input(1))
       (output._1, output._2)
     } else {
-      val adderOutputs =
-        for (i <- 0 until opNum / 2)
+      val adderOutputs = for (i <- 0 until opNum / 2)
           yield ModAdderPiped(g, ip, input(2 * i), input(2 * i + 1))
       if ((opNum % 2) == 0) {
         val next = Vec(UInt(g.dataWidth bits), opNum / 2)
