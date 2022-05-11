@@ -1,4 +1,3 @@
-from multiprocessing import context
 import random
 from poseidon_python.finite_field import PrimeField
 
@@ -64,22 +63,26 @@ class Context:
 
     def set_dut_ports(self, dut, prefix="io_input_payload_"):
         """set Context values to dut io ports"""
-        exec(f"dut.{prefix}state_index.value = self.state_index")
-        exec(f"dut.{prefix}round_index.value = self.round_index")
-        exec(f"dut.{prefix}state_size.value = self.state_size")
-        exec(f"dut.{prefix}state_element.value = self.state_element.value")
-        exec(f"dut.{prefix}state_id.value = self.state_id")
+        exec(f"dut.{prefix}stateIndex.value = self.state_index")
+        exec(f"dut.{prefix}roundIndex.value = self.round_index")
+        exec(f"dut.{prefix}stateSize.value = self.state_size")
+        exec(f"dut.{prefix}stateElement.value = self.state_element.value")
+        exec(f"dut.{prefix}stateId.value = self.state_id")
 
     def get_dut_ports(self, dut, prefix="io_output_payload_"):
         """get Context values from dut io ports"""
-        exec(f"self.state_index = int(dut.{prefix}state_index.value)")
-        exec(f"self.round_index = int(dut.{prefix}round_index.value)")
-        exec(f"self.state_size = int(dut.{prefix}state_size.value)")
-        exec(f"self.state_element.value = int(dut.{prefix}state_element.value)")
-        exec(f"self.state_id = int(dut.{prefix}state_id.value)")
+        exec(f"self.state_index = int(dut.{prefix}stateIndex.value)")
+        exec(f"self.round_index = int(dut.{prefix}roundIndex.value)")
+        exec(f"self.state_size = int(dut.{prefix}stateSize.value)")
+        exec(f"self.state_element.value = int(dut.{prefix}stateElement.value)")
+        exec(f"self.state_id = int(dut.{prefix}stateId.value)")
 
-    def get_context_vec(cases_count):
-        size = Context.size_range[random.randint(0, 3)]
+    def get_context_vec(cases_count, state_size=None):
+        if(state_size == None):
+            size = Context.size_range[random.randint(0, 3)]
+        else:
+            size = state_size
+        
         round = random.randint(0, Context.round_map[size] - 1)
         id = cases_count % pow(2, Context.id_width)
 
@@ -87,8 +90,6 @@ class Context:
         for i in range(size):
             context_vec.append(Context(round, i, size, id))
             context_vec[i].rand_state_element()
-        if size == 5:
-            context_vec.append(Context(round, 5, size, id))
         return context_vec
 
 
@@ -99,21 +100,19 @@ class MDSContext:
     modulus = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
     id_width = 8
 
-    def check_input_range(round, size, id):
+    def check_input_range(round, size):
         assert size in MDSContext.size_range, "state_size is out of range"
         assert (round >= 0) & (
             round < MDSContext.round_map[size]
         ), "round_index is out of range"
-        assert (id >= 0) & (
-            id < pow(2, MDSContext.id_width)
-        ), "state_id is out of range"
+
 
     def __init__(self, round=0, size=3, id=0):
-        MDSContext.check_input_range(round, size, id)
+        MDSContext.check_input_range(round, size)
 
         self.round_index = round
         self.state_size = size
-        self.state_id = id
+        self.state_id = id % pow(2, MDSContext.id_width)
         self.state_elements = []
         for i in range(MDSContext.elements_num):
             self.state_elements.append(PrimeField(0))
@@ -149,22 +148,22 @@ class MDSContext:
 
     def set_dut_ports(self, dut, prefix="io_input_payload_"):
         """set Context values to dut io ports"""
-        exec(f"dut.{prefix}round_index.value = self.round_index")
-        exec(f"dut.{prefix}state_size.value = self.state_size")
-        exec(f"dut.{prefix}state_id.value = self.state_id")
+        exec(f"dut.{prefix}roundIndex.value = self.round_index")
+        exec(f"dut.{prefix}stateSize.value = self.state_size")
+        exec(f"dut.{prefix}stateId.value = self.state_id")
         for i in range(MDSContext.elements_num):
             exec(
-                f"dut.{prefix}state_elements_{i}.value = self.state_elements[{i}].value"
+                f"dut.{prefix}stateElements_{i}.value = self.state_elements[{i}].value"
             )
 
     def get_dut_ports(self, dut, prefix="io_output_payload_"):
         """get Context values from dut io ports"""
-        exec(f"self.round_index = int(dut.{prefix}round_index.value)")
-        exec(f"self.state_size  = int(dut.{prefix}state_size.value)")
-        exec(f"self.state_id = int(dut.{prefix}state_id.value)")
+        exec(f"self.round_index = int(dut.{prefix}roundIndex.value)")
+        exec(f"self.state_size  = int(dut.{prefix}stateSize.value)")
+        exec(f"self.state_id = int(dut.{prefix}stateId.value)")
         for i in range(MDSContext.elements_num):
             exec(
-                f"self.state_elements[i].value = int(dut.{prefix}state_elements_{i}.value)"
+                f"self.state_elements[i].value = int(dut.{prefix}stateElements_{i}.value)"
             )
 
     def get_context_vec():

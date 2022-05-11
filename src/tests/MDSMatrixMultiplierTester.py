@@ -1,14 +1,13 @@
 import cocotb
-import random
 from cocotb.clock import Clock
 from cocotb.result import TestSuccess, TestFailure
 from cocotb.triggers import RisingEdge
+
+import random
 from queue import Queue
+
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff
-
-from cocotb_test import simulator
-
 from BasicElements import Context, MDSContext
 
 CASES_NUM = 100
@@ -107,14 +106,3 @@ async def MDSMatrixMultiplierTest(dut):
         await RisingEdge(dut.clk)
 
 
-# pytest
-def test_MDSMatrixMultiplier():
-    simulator.run(
-        verilog_sources=[
-            "../main/verilog/MDSMatrixMultiplier.v",
-            "../main/verilog/MontMultiplierBasics.v",
-        ],
-        toplevel="MDSMatrixMultiplier",
-        module="MDSMatrixMultiplierTester",
-        python_search="./src/reference_model/",
-    )

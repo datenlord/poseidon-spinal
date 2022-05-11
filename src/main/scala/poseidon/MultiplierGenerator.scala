@@ -382,6 +382,15 @@ case class MultiplierStream(width: Int, isSim: Boolean, ipConfig: MulIPConfig)
 }
 
 object MultiplierFlow {
+  def latency(genWidth:Int, ipConfig:MulIPConfig):Int = {
+    if(genWidth == ipConfig.inputWidth) {
+      ipConfig.pipeStages
+    } else{
+      val nextWidth = (genWidth + 1)/2
+      latency(nextWidth + 1, ipConfig) + 3
+    }
+  }
+
   def apply(
       width: Int,
       isSim: Boolean,

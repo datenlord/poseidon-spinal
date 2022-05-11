@@ -201,6 +201,11 @@ case class ModAdderConfig(
     isSim: Boolean
 )
 object ModularAdderFlow {
+
+  def latency(ipConfig:AdderIPConfig):Int = {
+    2*ipConfig.latency + 1
+  }
+
   def apply(
       config: ModAdderConfig,
       ipConfig: AdderIPConfig,
@@ -212,8 +217,7 @@ object ModularAdderFlow {
   }
 }
 
-case class ModularAdderFlow(config: ModAdderConfig, ipConfig: AdderIPConfig)
-    extends Component {
+case class ModularAdderFlow(config: ModAdderConfig, ipConfig: AdderIPConfig) extends Component {
 
   val io = new Bundle {
     val input = slave Flow (operands(config.dataWidth))
@@ -248,7 +252,7 @@ case class ModularAdderFlow(config: ModAdderConfig, ipConfig: AdderIPConfig)
     }
     .stage()
 
-  val totalLatency = ipConfig.latency * 2 + 1
+  val latency = ipConfig.latency * 2 + 1
 }
 
 object AdderIPStreamVerilog {

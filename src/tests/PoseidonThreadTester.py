@@ -17,15 +17,16 @@ CASES_NUM = 100
 class PoseidonThreadTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_inputs = Queue(maxsize=80)
-        self.ref_outputs = Queue(maxsize=80)  # store reference results
+        self.ref_inputs = Queue(maxsize=100)
+        self.ref_outputs = Queue(maxsize=100)  # store reference results
+        self.state_size = 5
 
     async def reset_dut(self):
         dut = self.dut
         dut.reset.value = 0
         await RisingEdge(dut.clk)
         dut.reset.value = 1
-        for i in range(2):
+        for i in range(3):
             await RisingEdge(dut.clk)
 
         dut.reset.value = 0
@@ -66,7 +67,7 @@ class PoseidonThreadTester:
         dut = self.dut
         cases_count = 0
         while cases_count < CASES_NUM:
-            dut_inputs = Context.get_context_vec(cases_count)
+            dut_inputs = Context.get_context_vec(cases_count, self.state_size)
 
             # assign dut io port
 

@@ -15,7 +15,7 @@ object AXI4StreamReceiver {
 class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input = slave(AXI4Stream(g.data_width))
+    val input = slave(AXI4Stream(g.dataWidth))
     val output = master Stream (MDSContext(g))
   }
 
@@ -23,18 +23,18 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
   val receiver = new Area {
     val output = Stream(MDSContext(g))
 
-    val sizeCounter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
-    val idCounter = Reg(UInt(g.id_width bits)) init (0)
-    val buffer = Vec(Reg(UInt(g.data_width bits)), g.t_max)
+    val sizeCounter = Reg(UInt(log2Up(g.sizeMax) bits)) init (0)
+    val idCounter = Reg(UInt(g.idWidth bits)) init (0)
+    val buffer = Vec(Reg(UInt(g.dataWidth bits)), g.sizeMax)
     buffer.foreach(_ init (0))
 
     val receiverFSM = new StateMachine {
       io.input.ready := False
       output.valid := False
-      output.state_id := 0
-      output.state_size := 0
-      output.state_elements.foreach(_ := 0)
-      output.round_index := 0
+      output.stateId := 0
+      output.stateSize := 0
+      output.stateElements.foreach(_ := 0)
+      output.roundIndex := 0
 
       val BUSY = new State with EntryPoint
       val DONE = new State
@@ -52,9 +52,9 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
       DONE
         .whenIsActive {
           output.valid := True
-          output.state_size := sizeCounter
-          output.state_id := idCounter
-          (output.state_elements lazyZip buffer).foreach(_ := _)
+          output.stateSize := sizeCounter
+          output.stateId := idCounter
+          (output.stateElements lazyZip buffer).foreach(_ := _)
 
           when(output.fire) {
             io.input.ready := True
@@ -75,8 +75,8 @@ class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
 }
 
 case class TransmitterContext(g: PoseidonGenerics) extends Bundle {
-  val state_id = UInt(g.id_width bits)
-  val state_element = UInt(g.data_width bits)
+  val state_id = UInt(g.idWidth bits)
+  val state_element = UInt(g.dataWidth bits)
 }
 
 object AXI4StreamTransmitter {
@@ -94,10 +94,10 @@ class AXI4StreamTransmitter(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
     val input = slave Stream (TransmitterContext(g))
-    val output = master(AXI4Stream(g.data_width))
+    val output = master(AXI4Stream(g.dataWidth))
   }
 
-  val idCounter = Reg(UInt(g.id_width bits)) init (0)
+  val idCounter = Reg(UInt(g.idWidth bits)) init (0)
   when(io.output.fire()) {
     idCounter := idCounter + 1
   }
@@ -118,7 +118,7 @@ class AXI4StreamTransmitter(g: PoseidonGenerics) extends Component {
   // io.output.last := True
   // outputTemp.ready := io.output.ready
 
-  // val idCounter = Reg(UInt(g.id_width bits)) init (0)
+  // val idCounter = Reg(UInt(g.idWidth bits)) init (0)
   // when(io.output.fire()) {
   //   idCounter := idCounter + 1
   // }
@@ -148,11 +148,11 @@ object AXI4StreamReceiverVerilog {
 
   def main(args: Array[String]): Unit = {
     val config = PoseidonGenerics(
-      t_max = 12,
-      round_max = 65,
-      loop_num = 3,
-      data_width = 255,
-      id_width = 5,
+      sizeMax = 12,
+      roundMax = 65,
+      loopNum = 3,
+      dataWidth = 255,
+      idWidth = 5,
       isSim = true
     )
     SpinalConfig(
@@ -166,11 +166,11 @@ object AXI4StreamTransmitterVerilog {
 
   def main(args: Array[String]): Unit = {
     val config = PoseidonGenerics(
-      t_max = 12,
-      round_max = 65,
-      loop_num = 2,
-      data_width = 255,
-      id_width = 5,
+      sizeMax = 12,
+      roundMax = 65,
+      loopNum = 2,
+      dataWidth = 255,
+      idWidth = 5,
       isSim = true,
       transmitterQueue = 20
     )

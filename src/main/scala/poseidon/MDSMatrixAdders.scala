@@ -9,7 +9,7 @@ import spinal.lib.fsm.{EntryPoint, State, StateMachine}
 //     initValue.state_elements.foreach(_ := 0)
 //     initValue.state_size := 0
 //     initValue.state_id := 0
-//     initValue.round_index := 0
+//     initValue.roundIndex := 0
 //     initValue
 //   }
 // }
@@ -51,19 +51,18 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
   // tempRes.state_size init (0)
   // tempRes.state_elements.foreach(_ init (0))
   // tempRes.state_id init (0)
-  // tempRes.round_index init (0)
-  val modAdderRes = cloneOf(MDSContext(g).state_elements)
+  // tempRes.roundIndex init (0)
+  val modAdderRes = cloneOf(MDSContext(g).stateElements)
   val modAdderVec =
-    ModAdderVec(tempRes.state_elements, io.input.state_elements, modAdderRes)
+    ModAdderVec(tempRes.stateElements, io.input.stateElements, modAdderRes)
 
   //
-  val countNum =
-    Mux(tempRes.state_size === 5, tempRes.state_size + 1, tempRes.state_size)
+  val countNum = tempRes.stateSize
 
   // implement the state machine logic
   val fsm = new StateMachine {
 
-    val counter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
+    val counter = Reg(UInt(log2Up(g.sizeMax) bits)) init (0)
     io.output.payload.assignSomeByName(tempRes)
     io.output.valid := False
 
@@ -80,7 +79,7 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
     val ADDING: State = new State {
       whenIsActive {
         when(io.input.valid) {
-          tempRes.state_elements.assignFrom(modAdderRes)
+          tempRes.stateElements.assignFrom(modAdderRes)
           when(counter + 1 === countNum) {
             goto(DONE)
           } otherwise {
@@ -109,11 +108,11 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
 object MDSMatrixAddersVerilog {
   def main(args: Array[String]): Unit = {
     val config = PoseidonGenerics(
-      t_max = 12,
-      round_max = 65,
-      loop_num = 5,
-      data_width = 255,
-      id_width = 8,
+      sizeMax = 12,
+      roundMax = 65,
+      loopNum = 5,
+      dataWidth = 255,
+      idWidth = 8,
       isSim = true
     )
     SpinalConfig(

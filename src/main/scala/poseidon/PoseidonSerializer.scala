@@ -19,93 +19,107 @@ case class PoseidonSerializer(g: PoseidonGenerics) extends Component {
     val serialOutput = master Stream (new Context(g))
   }
 
-  val stateSize = Reg(UInt(log2Up(g.t_max) bits)) init (0)
-  val lastElementIndex = Mux(
-    stateSize === 5,
-    stateSize,
-    stateSize - 1
-  ) // when size is 5, resize to 6
-  val roundIndex = Reg(UInt(log2Up(g.round_max) bits)) init (0)
-  val stateID = Reg(UInt(g.id_width bits)) init (0)
-  val buffer = Vec(Reg(UInt(g.data_width bits)), g.t_max)
-  buffer.foreach(_ init (0))
+  val serializer = new StateMachine {
+    val input = io.parallelInput
+    val output = Stream(new Context(g))
 
-  val fsm = new StateMachine {
-    val counter = Reg(UInt(log2Up(g.t_max) bits)) init (0)
+    val tempOutput = Reg(MDSContext(g))
+
+    val indexCount = Reg(UInt(log2Up(g.sizeMax) bits)) init (0)
+    val lastIndex = tempOutput.stateSize - 2
 
     val IDLE = new State with EntryPoint
     val BUSY = new State
     val LAST = new State
 
     // set default value
-    io.parallelInput.ready := False
-
-    io.serialOutput.valid := False
-    io.serialOutput.state_id := 0
-    io.serialOutput.state_size := 0
-    io.serialOutput.state_element := 0
-    io.serialOutput.state_index := 0
-    io.serialOutput.round_index := 0
+    input.ready := False
+    output.valid := False
+    output.payload.assignSomeByName(tempOutput)
+    output.stateElement := 0
+    output.stateIndex := 0
 
     IDLE
       .whenIsActive {
-        io.parallelInput.ready := True
-        when(io.parallelInput.fire) {
-          (buffer lazyZip io.parallelInput.state_elements).foreach(_ := _)
-          stateID := io.parallelInput.state_id
-          stateSize := io.parallelInput.state_size
-          roundIndex := io.parallelInput.round_index
+        input.ready := True
+        when(input.fire) {
+          tempOutput.assignSomeByName(input.payload)
           goto(BUSY)
         }
       }
 
     BUSY
       .whenIsActive {
-        io.serialOutput.valid := True
-        io.serialOutput.state_element := buffer(counter)
-        io.serialOutput.state_index := counter
-        io.serialOutput.state_size := stateSize
-        io.serialOutput.round_index := roundIndex
-        io.serialOutput.state_id := stateID
-        when(io.serialOutput.fire) {
-          counter := counter + 1
-          when(counter === lastElementIndex - 1) { goto(LAST) }
+        output.valid := True
+        output.stateElement := tempOutput.stateElements(indexCount)
+        output.stateIndex := indexCount
+        when(output.fire) {
+          indexCount := indexCount + 1
+          when(indexCount === lastIndex) { goto(LAST) }
         }
       }
 
     LAST
       .whenIsActive {
-        io.serialOutput.valid := True
-        io.serialOutput.state_element := buffer(counter)
-        io.serialOutput.state_index := counter
-        io.serialOutput.state_size := stateSize
-        io.serialOutput.round_index := roundIndex
-        io.serialOutput.state_id := stateID
+        output.valid := True
+        output.stateElement := tempOutput.stateElements(indexCount)
+        output.stateIndex := indexCount
 
-        when(io.serialOutput.fire) {
-          io.parallelInput.ready := True
-          when(io.parallelInput.fire) {
-            (buffer lazyZip io.parallelInput.state_elements).foreach(_ := _)
-            stateID := io.parallelInput.state_id
-            stateSize := io.parallelInput.state_size
-            roundIndex := io.parallelInput.round_index
+        when(output.fire) {
+          input.ready := True
+          when(input.fire) {
+            tempOutput.assignSomeByName(input.payload)
             goto(BUSY)
           } otherwise (goto(IDLE))
         }
       }
-      .onExit(counter := 0)
+      .onExit(indexCount := 0)
   }
+
+  // Stream Demux
+  val demuxCounter = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
+  val lastId = Reg(UInt( g.idWidth bits)) init(UInt(g.idWidth bits).setAll())
+  when(serializer.output.fire){
+    when(serializer.output.stateId=/=lastId){
+      lastId := serializer.output.stateId
+      demuxCounter := 0
+    } otherwise{
+      demuxCounter := demuxCounter + 1
+    }
+  }
+  val demuxSelect = (demuxCounter < g.peNum-1) || (serializer.output.stateId =/= lastId)
+  val demuxOutput = StreamDemux(serializer.output, demuxSelect.asUInt, 2)
+
+  // Stream Arbiter
+  val arbiterCounter = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
+  val stateSize = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
+  val countEnable = arbiterCounter + 1 < stateSize
+  val arbiterInput0 = FlowDelay(demuxOutput(0).toFlow, g.mdsOperandLatency).toStream
+  val arbiterInput1 = demuxOutput(1).haltWhen(countEnable)
+  
+  when(countEnable){
+    arbiterCounter := arbiterCounter + 1
+  } otherwise{
+    arbiterCounter := 0
+    stateSize := 0
+    when(arbiterInput0.valid){
+      stateSize := arbiterInput0.stateSize
+    }
+  }
+  
+  val arbiterOutput = StreamArbiterFactory.lowerFirst.onArgs(arbiterInput0, arbiterInput1)
+  io.serialOutput << arbiterOutput.stage()
 }
 
 object PoseidonSerializerVerilog {
   def main(args: Array[String]): Unit = {
 
     val config = PoseidonGenerics(
-      t_max = 12,
-      round_max = 65,
-      loop_num = 3,
-      data_width = 255,
-      id_width = 5,
+      sizeMax = 12,
+      roundMax = 65,
+      loopNum = 3,
+      dataWidth = 255,
+      idWidth = 8,
       isSim = true
     )
 

@@ -87,14 +87,22 @@ case class MontgomeryMultStream(g: MontMultConfig, ipConfig: MulIPConfig)
 }
 
 object MontgomeryMultFlow {
+
+  def latency(mulConfig:MontMultConfig, ipConfig:MulIPConfig):Int = {
+    val mulLatency0 = MultiplierFlow.latency(mulConfig.dataWidth, ipConfig)
+    val mulLatency1 = MultiplierFlow.latency(mulConfig.rWidth, ipConfig)
+    val mulLatency2 = MultiplierFlow.latency(mulConfig.rWidth, ipConfig)
+    mulLatency0 + mulLatency1 + mulLatency2 + 2
+  }
+
   def apply(
       g: MontMultConfig,
       ipConfig: MulIPConfig,
       input: Flow[operands]
-  ): (Flow[results], Int) = {
+  ): Flow[results] = {
     val multInst = MontgomeryMultFlow(g, ipConfig)
     multInst.io.input << input
-    (multInst.io.output, multInst.totalLatency)
+    multInst.io.output
   }
 }
 
