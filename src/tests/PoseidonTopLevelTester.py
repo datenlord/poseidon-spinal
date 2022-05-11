@@ -9,7 +9,7 @@ from poseidon_python import poseidon_ff, basic
 
 from cocotb_test import simulator
 
-CASES_NUM = 500
+CASES_NUM = 1
 
 
 class PoseidonTopLevelTester:
@@ -115,6 +115,7 @@ async def PoseidonTopLevelTest(dut):
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())
     # rindex = [0,0,0,0]
+    loop = dut.poseidonLoop_1
     while True:
         await RisingEdge(dut.clk)
         if (
@@ -123,6 +124,13 @@ async def PoseidonTopLevelTest(dut):
         ):
             print("state id:")
             print(dut.poseidonLoop_1_io_output_m2sPipe_payload_state_id.value)
+        
+        if(loop.streamArbiter_3_io_output_valid.value & loop.poseidonSerializer_1_io_parallelInput_ready.value):
+            state_id = loop.streamArbiter_3_io_output_payload_stateSize.value
+            rIndex = loop.streamArbiter_3_io_output_payload_roundIndex.value
+            print(f"state_id:{int(state_id)}")
+            print(f"round_index:{int(rIndex)}"+"\n")
+
         # if (
         #     dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
         #     & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value

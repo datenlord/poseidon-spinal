@@ -63,7 +63,7 @@ case class PoseidonGenerics
   peNum:Int = 6, // the number of PEs in MDSMatrixMultiplier
   mdsOperandLatency:Int = 66, // total latency of operand in MDSMixing
   transmitterQueue: Int = 10, // the depth of queue in AXI4Transmitter
-  flowQueue: Int = 20 // the depth of flow queue
+  flowQueue: Int = 30 // the depth of flow queue
 )
 
 object XilinxIPConfig{
@@ -222,7 +222,7 @@ object PoseidonTopLevelVerilog {
       loopNum = 3,
       dataWidth = 255,
       idWidth = 8,
-      isSim = false,
+      isSim = true,
       constantMemType = false,
       transmitterQueue = 10,
       flowQueue = 20

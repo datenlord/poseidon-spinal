@@ -5,12 +5,13 @@ from cocotb.triggers import RisingEdge
 
 import random
 from queue import Queue
+from math import ceil
 
 from poseidon_python import basic
 from BasicElements import Context, MDSContext
 from poseidon_python import poseidon_ff
 
-CASES_NUM = 60  # the number of test cases
+CASES_NUM = 100  # the number of test cases
 
 
 class MDSMixingTester:
@@ -18,6 +19,8 @@ class MDSMixingTester:
         self.dut = target
         self.ref_outputs = Queue(maxsize=100)  # store reference results
         self.state_size = size
+        self.mds_op_latency = 66
+        self.peNum = 6
 
     async def reset_dut(self):
         dut = self.dut
@@ -28,6 +31,21 @@ class MDSMixingTester:
             await RisingEdge(dut.clk)
 
         dut.reset.value = 0
+    
+    def reference_model(self, context_vec):
+        mds_input_ff = []
+        for context in context_vec:
+            mds_input_ff.append(context.state_element)
+            
+        mds_output_ff = poseidon_ff.mds_mixing_ff(mds_input_ff)
+        ref_output = MDSContext(
+            context_vec[0].round_index, 
+            context_vec[0].state_size, 
+            context_vec[0].state_id
+        )
+        ref_output.copy_state_elements(mds_output_ff)
+
+        return ref_output
 
     async def drive_input_ports(self):
         """drive input ports"""
@@ -35,32 +53,47 @@ class MDSMixingTester:
 
         cases_count = 0
         while cases_count < CASES_NUM:
-            # get random input
-            context_vec = Context.get_context_vec(cases_count,self.state_size)
+            # get random input and reference output
+            dut_inputs = []
+            for i in range(ceil(self.mds_op_latency/self.state_size)):
+                input_vec = Context.get_context_vec(cases_count, self.state_size)
+                if cases_count < CASES_NUM:
 
-            for element in context_vec:
-                dut.io_input_valid.value = True
-                element.set_dut_ports(dut)
+                    # drive input ports
+                    dut.io_input_valid.value = True
+                    for element in input_vec:
+                        element.set_dut_ports(dut)
+                        await RisingEdge(dut.clk)
+                    dut_inputs.append(input_vec)
 
-                await RisingEdge(dut.clk)
-                while (dut.io_input_valid.value & dut.io_input_ready.value) == False:
-                    await RisingEdge(dut.clk)
+                    # calculate reference output and enqueue
+                    ref_output = self.reference_model(dut_inputs[i])
+                    self.ref_outputs.put(ref_output)
 
-            # calculate and push the reference outputs
-            mds_input_ff = []
-            for context in context_vec:
-                mds_input_ff.append(context.state_element)
+                else:
+                    dut.io_input_valid.value = False
+                    for element in input_vec:
+                        element.set_dut_ports(dut)
+                        await RisingEdge(dut.clk)
+                
+                cases_count += 1
             
-            mds_output_ff = poseidon_ff.mds_mixing_ff(mds_input_ff)
-            ref_output = MDSContext(
-                context_vec[0].round_index, 
-                context_vec[0].state_size, 
-                context_vec[0].state_id
-            )
-            ref_output.copy_state_elements(mds_output_ff)
-            self.ref_outputs.put(ref_output)
+            for input in dut_inputs:
+                for element in input:
+                    dut.io_input_valid.value = True
+                    element.set_dut_ports(dut)
+                    await RisingEdge(dut.clk)
+                
+            if(self.state_size > self.peNum):
+                for input in dut_inputs:
+                    for i in range(self.peNum, self.state_size):
+                        dut.io_input_valid.value = True
+                        input[i].set_dut_ports(dut)
+                        await RisingEdge(dut.clk)
+                    for i in range(self.peNum):
+                        dut.io_input_valid.value = False
+                        await RisingEdge(dut.clk)
 
-            cases_count += 1
 
         dut.io_input_valid.value = False
 
@@ -70,9 +103,8 @@ class MDSMixingTester:
         cases_count = 0
 
         while cases_count < CASES_NUM:
-            dut.io_output_ready.value = True
             await RisingEdge(dut.clk)
-            if (dut.io_output_valid.value & dut.io_output_ready.value) == True:
+            if (dut.io_output_valid.value) == True:
                 # get reference output
                 ref_output = self.ref_outputs.get()
 
@@ -96,13 +128,12 @@ class MDSMixingTester:
 async def MDSMatrixAddersTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
-    tester = MDSMixingTester(dut, 12)
+    tester = MDSMixingTester(dut, 3)
 
     # set default values to all dut input ports
     initial_context = Context()
     initial_context.set_dut_ports(dut)
     dut.io_input_valid.value = False
-    dut.io_output_ready.value = False
 
     # start testing
     await tester.reset_dut()

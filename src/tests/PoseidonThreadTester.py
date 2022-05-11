@@ -1,25 +1,29 @@
-from weakref import ref
 import cocotb
-import random
 from cocotb.clock import Clock
 from cocotb.result import TestSuccess, TestFailure
 from cocotb.triggers import RisingEdge
+
 from queue import Queue
+import random
+from math import ceil
+
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic, constants
-from cocotb_test import simulator
+
 
 from BasicElements import Context, MDSContext
 
-CASES_NUM = 100
+CASES_NUM = 50
 
 
 class PoseidonThreadTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_inputs = Queue(maxsize=100)
-        self.ref_outputs = Queue(maxsize=100)  # store reference results
-        self.state_size = 5
+        self.ref_inputs = Queue(maxsize=300)
+        self.ref_outputs = Queue(maxsize=300)  # store reference results
+        self.state_size = 12
+        self.peNum = 6
+        self.mds_op_latency = 66
 
     async def reset_dut(self):
         dut = self.dut
@@ -37,7 +41,8 @@ class PoseidonThreadTester:
         round_index = dut_inputs[0].round_index
         state_ff = []
         for i in range(state_size):
-            state_ff.append(dut_inputs[i].state_element)
+            state_ff.append(ff.PrimeField(0))
+            state_ff[i].value = dut_inputs[i].state_element.value
 
         roundf = basic.ROUNDFULL
         roundp = basic.ROUNDPARTIAL[state_size]
@@ -57,37 +62,57 @@ class PoseidonThreadTester:
             state_ff[0] = poseidon_ff.s_box_ff(state_ff[0])
         else:
             state_ff = poseidon_ff.s_boxes_ff(state_ff)
+        
 
         state_ff = poseidon_ff.mds_mixing_ff(state_ff)
 
-        return state_ff
+
+        ref_output = MDSContext(
+            dut_inputs[0].round_index,
+            dut_inputs[0].state_size,
+            dut_inputs[0].state_id,
+        )
+        ref_output.copy_state_elements(state_ff)
+        return ref_output
+
 
     async def drive_input_ports(self):
         """generate input signals"""
         dut = self.dut
         cases_count = 0
         while cases_count < CASES_NUM:
-            dut_inputs = Context.get_context_vec(cases_count, self.state_size)
+            dut_inputs = []
+            for i in range(ceil(self.mds_op_latency/self.state_size)):
+                dut_input = Context.get_context_vec(cases_count, self.state_size)
+                
+                if cases_count < CASES_NUM:
+                    dut.io_input_valid.value = True
+                    for element in dut_input:
+                        element.set_dut_ports(dut)
+                        await RisingEdge(dut.clk)
+                    dut_inputs.append(dut_input)
 
-            # assign dut io port
+                    ref_output = self.ref_poseidon_thread(dut_input)
+                    self.ref_outputs.put(ref_output)
 
-            for input in dut_inputs:
-                dut.io_input_valid.value = True  # random.random() > 0.2
-                input.set_dut_ports(dut)
-
-                await RisingEdge(dut.clk)
-                while (dut.io_input_valid.value) == False:
-                    dut.io_input_valid.value = True  # random.random() > 0.2
-                    await RisingEdge(dut.clk)
-
-            cases_count += 1
-            ref_output = MDSContext(
-                dut_inputs[0].round_index,
-                dut_inputs[0].state_size,
-                dut_inputs[0].state_id,
-            )
-            ref_output.copy_state_elements(self.ref_poseidon_thread(dut_inputs))
-            self.ref_outputs.put(ref_output)
+                else:
+                    dut.io_input_valid.value = False
+                    for element in dut_input:
+                        element.set_dut_ports(dut)
+                        await RisingEdge(dut.clk)
+                
+                cases_count += 1
+                
+            
+            if(self.state_size > self.peNum):
+                for input in dut_inputs:
+                    for i in range(self.peNum, self.state_size):
+                        dut.io_input_valid.value = True
+                        input[i].set_dut_ports(dut)
+                        await RisingEdge(dut.clk)
+                    for i in range(self.peNum):
+                        dut.io_input_valid.value = False
+                        await RisingEdge(dut.clk)
 
         dut.io_input_valid.value = False
 
@@ -136,15 +161,3 @@ async def PoseidonThreadTest(dut):
         await RisingEdge(dut.clk)
 
 
-# pytest
-def test_PoseidonThread():
-    simulator.run(
-        verilog_sources=[
-            "../main/verilog/PoseidonThread.v",
-            "../main/verilog/MontMultiplierBasics.v",
-            "../main/verilog/ModAdder.v",
-        ],
-        toplevel="PoseidonThread",
-        module="PoseidonThreadTester",
-        python_search="./src/reference_model/",
-    )

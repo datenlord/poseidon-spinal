@@ -200,33 +200,20 @@ object MontgomeryMultStreamVerilog {
 
 object MontgomeryMultFlowVerilog {
   def main(args: Array[String]): Unit = {
-    val modulus = BigInt(
-      "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
-      16
-    )
-    val modInverse = BigInt(
-      "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
-      16
-    )
-    val compensation = BigInt(
-      "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
-      16
-    )
     val montConfig =
-      MontMultConfig(255, 256, modulus, modInverse, compensation, true)
-
-    val ipConfig = MulIPConfig(
-      inputWidth = 34,
-      outputWidth = 68,
-      isCE = false,
-      isSCLR = false,
-      pipeStages = 6,
-      moduleName = "mult_gen_0"
-    )
+      MontMultConfig(
+        255, 256, 
+        PoseidonParam.modulus, 
+        PoseidonParam.modInverse, 
+        PoseidonParam.compensation, 
+        true
+      )
 
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
-    ).generate(MontgomeryMultFlow(montConfig, ipConfig))
+    ).generate(MontgomeryMultFlow(montConfig, XilinxIPConfig.mul0))
+
+    print(MontgomeryMultFlow.latency(montConfig, XilinxIPConfig.mul0))
   }
 }

@@ -76,26 +76,16 @@ case class PoseidonSerializer(g: PoseidonGenerics) extends Component {
       .onExit(indexCount := 0)
   }
 
-  // Stream Demux
-  val demuxCounter = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
-  val lastId = Reg(UInt( g.idWidth bits)) init(UInt(g.idWidth bits).setAll())
-  when(serializer.output.fire){
-    when(serializer.output.stateId=/=lastId){
-      lastId := serializer.output.stateId
-      demuxCounter := 0
-    } otherwise{
-      demuxCounter := demuxCounter + 1
-    }
-  }
-  val demuxSelect = (demuxCounter < g.peNum-1) || (serializer.output.stateId =/= lastId)
-  val demuxOutput = StreamDemux(serializer.output, demuxSelect.asUInt, 2)
 
   // Stream Arbiter
   val arbiterCounter = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
   val stateSize = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
   val countEnable = arbiterCounter + 1 < stateSize
-  val arbiterInput0 = FlowDelay(demuxOutput(0).toFlow, g.mdsOperandLatency).toStream
-  val arbiterInput1 = demuxOutput(1).haltWhen(countEnable)
+  
+  val delayFree = serializer.output.stateIndex < g.peNum
+  val delayInput = serializer.output.asFlow.throwWhen(delayFree)
+  val arbiterInput0 = FlowDelay(delayInput, g.mdsOperandLatency).toStream
+  val arbiterInput1 = serializer.output.haltWhen(countEnable)
   
   when(countEnable){
     arbiterCounter := arbiterCounter + 1

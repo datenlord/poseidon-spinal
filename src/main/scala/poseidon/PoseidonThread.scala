@@ -39,7 +39,7 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     isSim = g.isSim
   )
 
-  val AddRoundConstantStage = new Area {
+  val AddRoundConstantStage = new Area { // 3 + 11 stages
     val input = io.input
     val constantAddr = RoundConstantMemAddr(g)
     constantAddr.assignSomeByName(input.payload)
@@ -63,7 +63,7 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
   }
 
   // SBox5 Stage
-  val SBox5Stage = new Area {
+  val SBox5Stage = new Area { // 47*3 + 1
 
     val input = AddRoundConstantStage.output
 
@@ -126,16 +126,8 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
   }
 
   // MDS Mixing
-  // MDS Multiplication
-  val mdsMulOutput =
-    MDSMatrixMultiplier(
-      g,
-      mulConfig,
-      XilinxIPConfig.mul1,
-      SBox5Stage.output
-    )
-  // MDS Addition
-  io.output << MDSMatrixAdders(g, mdsMulOutput)
+  val modArith = ModArithmetic(mulConfig, XilinxIPConfig.mul1, addConfig, XilinxIPConfig.adder0)
+  io.output := MDSMixing(g, modArith, SBox5Stage.output) // 5 + 47 + 11*6 stages
 
 }
 

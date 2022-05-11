@@ -10,7 +10,7 @@ from math import ceil
 from poseidon_python import basic
 from BasicElements import Context, MDSContext
 
-CASES_NUM = 13
+CASES_NUM = 50
 
 
 class PoseidonSerializerTester:
@@ -45,7 +45,7 @@ class PoseidonSerializerTester:
             
             # get reference outputs and enqueue
             for input in dut_inputs:
-                for i in range(min(self.pe_num, self.state_size)):
+                for i in range(self.state_size):
                     ref_output = Context(0, i, input.state_size, input.state_id)
                     ref_output.state_element.value = input.state_elements[i].value
                     self.ref_outputs.put(ref_output)

@@ -259,7 +259,7 @@ case class ProcessingEngine(peTag:Int, g:PoseidonGenerics, modArith:ModArithmeti
 
 
 object MDSMixing{
-  def apply(g:PoseidonGenerics, modArith:ModArithmetic, input:Stream[ContextCase]):Stream[MDSContext]={
+  def apply(g:PoseidonGenerics, modArith:ModArithmetic, input:Flow[ContextCase]):Flow[MDSContext]={
     val mdsInst = MDSMixing(g, modArith)
     mdsInst.io.input := input
     mdsInst.io.output
@@ -269,8 +269,8 @@ object MDSMixing{
 case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Component{
 
   val io = new Bundle{
-    val input  = slave Stream(ContextCase(g))
-    val output = master Stream(MDSContext(g))
+    val input  = slave Flow(ContextCase(g))
+    val output = master Flow(MDSContext(g))
   }
 
   // The Array Of Processing Engines
@@ -285,19 +285,8 @@ case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Compone
   val peInputLogic = new Area{
 
     // PE Loopback Logic
-    val peLoopback = PEConnection(g)
-    val stateSize, counter = Reg(UInt(log2Up(g.sizeMax) bits)) init(0)
-    val countEnable = counter + 1 < stateSize
-    when(countEnable){
-      counter := counter + 1
-    }otherwise{
-      counter := 0
-      stateSize := 0
-      when(peLoopback.operand.valid){
-        stateSize := peLoopback.operand.stateSize
-      }
-    }
-    val input = io.input.haltWhen(countEnable || peLoopback.operand.valid).toFlow
+    val contextLoopback = Flow(PEContext(g))
+    val input = io.input
 
     // Input Operand Logic
     val operandInput = input.translateWith{
@@ -305,7 +294,7 @@ case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Compone
       payload.assignSomeByName(input.payload)
       payload
     }
-    val operandOutput = Mux(peLoopback.operand.valid, peLoopback.operand, operandInput)
+    val operandOutput = operandInput
 
     // Input Context Logic
     val contextInput = input.translateWith{
@@ -317,12 +306,9 @@ case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Compone
       payload
     }
     val contextLatency = ProcessingEngine.latencyToAdder(modArith)
-    val validDelayed = Delay(contextInput.valid, contextLatency, init=False)
-    val payloadDelayed = Delay(contextInput.payload, contextLatency)
-    val contextDelayed = Flow(PEContext(g))
-    contextDelayed.valid := validDelayed
-    contextDelayed.payload := payloadDelayed
-    val contextOutput = Mux(peLoopback.context.valid, peLoopback.context, contextDelayed)
+    val contextDelayed = FlowDelay(contextInput, contextLatency)
+
+    val contextOutput = Mux(contextLoopback.valid, contextLoopback, contextDelayed)
 
     // Drive Input Signals Of The First Processing Engine
     peConnections(0).context := contextOutput
@@ -332,22 +318,16 @@ case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Compone
   // Processing Engine Output Logic
   val peOutputLogic = new Area{
     val input = peConnections.last
-    val peLoopback = PEConnection(g)
 
   
-    // Operand Logic
     val peOpLatency = g.peNum * ProcessingEngine.operandLatency(modArith)
-    peLoopback.operand := FlowDelay(input.operand, g.mdsOperandLatency - peOpLatency)
 
-    // Context Logic
     val done = input.context.peCounter === input.context.stateSize
-    val contextLoopback = input.context.throwWhen(done)
-    peLoopback.context := FlowDelay(contextLoopback, g.mdsOperandLatency - peOpLatency)
-    
-    val output = input.context.takeWhen(done)
+    val contextLoopback = input.context.throwWhen(done) 
+    peInputLogic.contextLoopback := FlowDelay(contextLoopback, g.mdsOperandLatency - peOpLatency)
 
-    // Loopback
-    peInputLogic.peLoopback := peLoopback
+    val output = input.context.takeWhen(done)
+    
   }
 
 
@@ -401,7 +381,7 @@ case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Compone
       }
   }
 
-  io.output << MDSOutputFSM.output.toStream
+  io.output << MDSOutputFSM.output
 }
 
 
