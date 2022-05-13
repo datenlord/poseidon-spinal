@@ -41,7 +41,7 @@ function build_and_test()
     then
         echo -e "Building ${component} ... \n"
         
-        docker exec -w /spinalworkspace/poseidon/ spinalhdl02 mill poseidon.runMain poseidon.${object}
+        docker exec -w /spinalworkspace/poseidon-spinal/ spinalhdl02 mill poseidon.runMain poseidon.${object}
         #docker run --rm -v $(pwd):$(pwd) -w $(pwd) -u root datenlord/spinal-cocotb:1.6.1 mill poseidon.runMain poseidon.${object}
     fi
 
@@ -54,7 +54,7 @@ function build_and_test()
         mv ./src/main/verilog/*.bin ./src/tests/
     fi
 
-    docker exec -w /spinalworkspace/poseidon/src/tests/ spinalhdl02 make DUT=${component}
+    docker exec -w /spinalworkspace/poseidon-spinal/src/tests/ spinalhdl02 make DUT=${component}
     #docker run --rm -v $(pwd):$(pwd) -w $(pwd)/src/tests/ -u root datenlord/spinal-cocotb:1.6.1 make DUT=${component}
     
     rm -f ./src/tests/*.bin

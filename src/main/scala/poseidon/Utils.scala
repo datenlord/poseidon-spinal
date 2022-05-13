@@ -3,7 +3,7 @@ import spinal.core._
 import spinal.lib._
 
 // Stream Fifo Implemented through Xilinx AXI-Stream Data Fifo IP 
-case class FifoIPConfig(byteWidth:Int, depth:Int, isSim:Boolean, name:String){
+case class FifoIPConfig(byteWidth:Int, depth:Int, name:String){
   val width = byteWidth * 8
 }
 
@@ -49,42 +49,45 @@ case class AXISDataFifoIP( g:FifoIPConfig ) extends BlackBox{
 
 
 object BundleFifo{
-  def apply[T<:Bundle](input:Stream[T], ipConfig:FifoIPConfig):Stream[T] = {
-    val fifoInst = BundleFifo(cloneOf(input.payload), ipConfig)
+  def apply[T<:Bundle](input:Stream[T], ipConfig:FifoIPConfig, isSim:Boolean):Stream[T] = {
+    val fifoInst = BundleFifo(cloneOf(input.payload), ipConfig, isSim)
     fifoInst.io.push << input
     fifoInst.io.pop
   }
 }
 
-case class BundleFifo[T <: Bundle](dataType:HardType[T], ip:FifoIPConfig) extends Component{
+case class BundleFifo[T <: Bundle](dataType:HardType[T], ip:FifoIPConfig, isSim:Boolean) extends Component{
   val io = new Bundle{
     val push = slave Stream(dataType())
     val pop = master Stream(dataType())
   }
+
   val inputWidth = dataType.getBitsWidth
   val fifoWidth = ip.width
-  if(ip.isSim){
-    io.pop << io.push.queue(ip.depth)
-  } else{
-    val slicesCount = inputWidth / fifoWidth + (if(inputWidth % fifoWidth==0) 0 else 1)
-    val slicesVec = for(i <- 0 until slicesCount)
-      yield io.push.payload.asBits((inputWidth-1 min (i+1)*fifoWidth) downto i*fifoWidth).resize(fifoWidth)
+  val slicesCount = inputWidth / fifoWidth + (if(inputWidth % fifoWidth==0) 0 else 1)
+  val slicesVec = for(i <- 0 until slicesCount)
+    yield io.push.payload.asBits((inputWidth-1 min (i+1)*fifoWidth) downto i*fifoWidth).resize(fifoWidth)
 
-    val inputForked = StreamFork(io.push.toEvent(), slicesCount)
-    val fifoInputs = Vec(Stream(Bits(fifoWidth bits)), slicesCount)
-    for(i <- 0 until slicesCount){
-      fifoInputs(i).arbitrationFrom(inputForked(i))
-      fifoInputs(i).payload := slicesVec(i)
-    }
-
-    val fifoOutputs = fifoInputs.map(AXISDataFifoIP(ip,_))
-    io.pop.arbitrationFrom(StreamJoin(fifoOutputs))
-    io.pop.payload.assignFromBits(fifoOutputs.map(_.payload).asBits().resized)
+  val inputForked = StreamFork(io.push.toEvent(), slicesCount)
+  val fifoInputs = Vec(Stream(Bits(fifoWidth bits)), slicesCount)
+  for(i <- 0 until slicesCount){
+    fifoInputs(i).arbitrationFrom(inputForked(i))
+    fifoInputs(i).payload := slicesVec(i)
   }
+
+  val fifoOutputs = if(isSim){
+    fifoInputs.map( _.queue(ip.depth) )
+  } else {
+    fifoInputs.map(AXISDataFifoIP(ip,_))
+  }
+  io.pop.arbitrationFrom(StreamJoin(fifoOutputs))
+  io.pop.payload.assignFromBits(fifoOutputs.map(_.payload).asBits().resized)
+  
 }
 
 // 
 object FlowDelay{
+  
   def apply[T <: Data](input:Flow[T], cycleCount:Int):Flow[T]={
     val validDelayed = Delay(input.valid, cycleCount, init=False)
     val payloadDelayed = Delay(input.payload, cycleCount)
@@ -93,6 +96,7 @@ object FlowDelay{
     inputDelayed.payload := payloadDelayed
     inputDelayed
   }
+
 }
 
 object BundleFifoVerilog{
@@ -106,7 +110,7 @@ object BundleFifoVerilog{
       isSim = true
     )
 
-    val ipConfig = FifoIPConfig( byteWidth = 193, depth = 256, isSim = false, name="axis_data_fifo_0")
+    val ipConfig = FifoIPConfig( byteWidth = 193, depth = 256, name="axis_data_fifo_0")
 
     val clockDomainConfig = ClockDomainConfig(
       resetKind = SYNC,
@@ -116,6 +120,6 @@ object BundleFifoVerilog{
       mode = Verilog,
       targetDirectory = "./src/main/verilog",
       defaultConfigForClockDomains = clockDomainConfig
-    ).generate(BundleFifo(MDSContext(poseidonConfig), ipConfig))
+    ).generate(BundleFifo(MDSContext(poseidonConfig), ipConfig, true))
   }
 }

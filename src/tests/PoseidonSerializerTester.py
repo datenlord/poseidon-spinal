@@ -10,14 +10,14 @@ from math import ceil
 from poseidon_python import basic
 from BasicElements import Context, MDSContext
 
-CASES_NUM = 50
+CASES_NUM = 30
 
 
 class PoseidonSerializerTester:
     def __init__(self, target):
         self.dut = target
         self.ref_outputs = Queue(maxsize=250)
-        self.state_size = 9
+        self.state_size = 12
         self.mds_op_latency = 66
         self.pe_num = 6
         #self.buffer_size = 12  # the size of buffer in serializer

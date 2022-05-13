@@ -7,26 +7,22 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic
 
-from cocotb_test import simulator
-
-CASES_NUM = 1
+CASES_NUM = 250
 
 
 class PoseidonTopLevelTester:
     def __init__(self, target):
         self.dut = target
-        self.ref_inputs = Queue(maxsize=100)
-        self.ref_outputs = Queue(maxsize=100)
+        self.ref_inputs = Queue(maxsize=300)
+        self.ref_outputs = Queue(maxsize=300)
 
     async def reset_dut(self):
         """reset the dut"""
-        self.dut.reset.value = 0
-        await RisingEdge(self.dut.clk)
-        self.dut.reset.value = 1
-        for i in range(2):
+        self.dut.resetn.value = 0
+        for i in range(3):
             await RisingEdge(self.dut.clk)
 
-        self.dut.reset.value = 0
+        self.dut.resetn.value = 1
 
     def get_random_values(self, cases_count):
         """get random input values"""
@@ -115,19 +111,49 @@ async def PoseidonTopLevelTest(dut):
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())
     # rindex = [0,0,0,0]
-    loop = dut.poseidonLoop_1
+    loop2 = dut.poseidonLoop_2
+    loop3 = dut.poseidonLoop_3
     while True:
         await RisingEdge(dut.clk)
-        if (
-            dut.aXI4StreamTransmitter_1_io_input_ready.value
-            & dut.poseidonLoop_1_io_output_m2sPipe_valid.value
-        ):
-            print("state id:")
-            print(dut.poseidonLoop_1_io_output_m2sPipe_payload_state_id.value)
+        # if (
+        #     dut.streamArbiter_6_io_output_m2sPipe_valid.value
+        #     & dut.aXI4StreamTransmitter_1_io_input_ready.value
+        # ):
+        #     state_id = int(dut.streamArbiter_6_io_output_m2sPipe_payload_state_id.value)
+        #     print("transmitter input:")
+        #     print(f"state id: {state_id}"+"\n")
         
-        if(loop.streamArbiter_3_io_output_valid.value & loop.poseidonSerializer_1_io_parallelInput_ready.value):
-            state_id = loop.streamArbiter_3_io_output_payload_stateSize.value
-            rIndex = loop.streamArbiter_3_io_output_payload_roundIndex.value
+        
+        # valid = dut.poseidonDispatcher_1_io_outputs_0_valid
+        # ready = dut.poseidonLoop_2_io_input_ready
+        # if(valid.value & ready.value):
+        #     state_id = dut.poseidonDispatcher_1_io_outputs_0_payload_stateId.value
+        #     print("loop 2 input: ")
+        #     print(f"state_id:{int(state_id)}"+"\n")
+        
+        # valid = dut.poseidonDispatcher_1_io_outputs_1_valid
+        # ready = dut.poseidonLoop_3_io_input_ready
+        # if(valid.value & ready.value):
+        #     state_id = dut.poseidonDispatcher_1_io_outputs_1_payload_stateId.value
+        #     print("loop 3 input: ")
+        #     print(f"state_id:{int(state_id)}"+"\n")
+            
+        
+        valid = loop2.streamArbiter_6_io_output_valid
+        ready = loop2.poseidonSerializer_2_io_parallelInput_ready
+        if(valid.value & ready.value):
+            state_id = loop2.streamArbiter_6_io_output_payload_stateId.value
+            rIndex = loop2.streamArbiter_6_io_output_payload_roundIndex.value
+            print("loop 2 arbiter output: ")
+            print(f"state_id:{int(state_id)}")
+            print(f"round_index:{int(rIndex)}"+"\n")
+        
+        valid = loop3.streamArbiter_6_io_output_valid
+        ready = loop3.poseidonSerializer_2_io_parallelInput_ready
+        if(valid.value & ready.value):
+            state_id = loop3.streamArbiter_6_io_output_payload_stateId.value
+            rIndex = loop3.streamArbiter_6_io_output_payload_roundIndex.value
+            print("loop 3 arbiter output: ")
             print(f"state_id:{int(state_id)}")
             print(f"round_index:{int(rIndex)}"+"\n")
 
@@ -146,15 +172,4 @@ async def PoseidonTopLevelTest(dut):
         #     print(f"round_index: {round_index}")
 
 
-# pytest
-def test_PoseidonTopLevel():
-    simulator.run(
-        verilog_sources=[
-            "../main/verilog/PoseidonTopLevel.v",
-            "../main/verilog/MontMultiplierBasics.v",
-            "../main/verilog/ModAdder.v",
-        ],
-        toplevel="PoseidonTopLevel",
-        module="PoseidonTopLevelTester",
-        python_search="./src/reference_model/",
-    )
+

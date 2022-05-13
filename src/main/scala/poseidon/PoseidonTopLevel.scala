@@ -92,6 +92,12 @@ object XilinxIPConfig{
     moduleName = "mult_gen_1"
   )
 
+  val fifo = FifoIPConfig(
+    byteWidth = 77, 
+    depth = 64,
+    name = "axis_data_fifo_0"
+  )
+
 }
 
 
@@ -169,17 +175,42 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
 
   val dataMuxed = StreamArbiterFactory.lowerFirst.onArgs(loopback, io.input)
   //
-  val serializerOutput = PoseidonSerializer(g, dataMuxed)
+
+  val (serializerOutput, isDelayEmpty) = PoseidonSerializer(g, dataMuxed)
   //
   val threadOutput = PoseidonThread(g, serializerOutput.toFlow)
-  //
-  val (threadOutBuffer, occupancy) =
-    threadOutput.queueWithOccupancy(g.flowQueue)
+  
   val demuxInst = LoopbackDeMux(g)
 
-  demuxInst.io.input << threadOutBuffer
-  loopback << demuxInst.io.output0.s2mPipe().m2sPipe()
+  demuxInst.io.input << threadOutput.toStream
+  loopback << BundleFifo(demuxInst.io.output0, XilinxIPConfig.fifo, g.isSim)
   io.output << demuxInst.io.output1.stage() //add a stage of register
+}
+
+object PoseidonDispatcher{
+  def apply(g:PoseidonGenerics, portCount:Int, input:Stream[MDSContext]):Vec[Stream[MDSContext]]={
+    val dispatcher = PoseidonDispatcher(g, portCount)
+    dispatcher.io.input << input
+    dispatcher.io.outputs
+  }
+}
+
+case class PoseidonDispatcher(g:PoseidonGenerics, portCount:Int) extends Component{
+  val io = new Bundle{
+    val input = slave Stream(MDSContext(g))
+    val outputs = Vec(master Stream(MDSContext(g)), portCount)
+  }
+
+  io.input.ready := io.outputs.map(_.ready).reduce(_||_)
+  for(i <- 0 until portCount){
+    io.outputs(i).payload := io.input.payload
+    if(i==0){
+      io.outputs(i).valid := io.input.valid
+    }else{
+      val validMask = (0 until i).map(io.outputs(_).ready).reduce(_||_)
+      io.outputs(i).valid := io.input.valid & (!validMask)
+    }
+  }
 }
 
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
@@ -190,8 +221,14 @@ class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
   }
   
 
+  // val initialInput = AXI4StreamReceiver(config, io.input)
+  // val loopOutput = PoseidonLoop(config, initialInput)
+
   val initialInput = AXI4StreamReceiver(config, io.input)
-  val loopOutput = PoseidonLoop(config, initialInput)
+  val loopInputs = PoseidonDispatcher(config, config.loopNum, initialInput)
+  val loopOutputs = loopInputs.map(PoseidonLoop(config, _))
+  val loopOutput = StreamArbiterFactory.lowerFirst.on(loopOutputs)
+
 
   io.output.connectFrom(AXI4StreamTransmitter(config, loopOutput.stage()))
 }
@@ -219,18 +256,25 @@ object PoseidonTopLevelVerilog {
     val config = PoseidonGenerics(
       sizeMax = 12,
       roundMax = 65,
-      loopNum = 3,
+      loopNum = 2,
       dataWidth = 255,
       idWidth = 8,
       isSim = true,
-      constantMemType = false,
-      transmitterQueue = 10,
+      constantMemType = true,
+      transmitterQueue = 25,
       flowQueue = 20
+    )
+    
+    val clockDomainConfig = ClockDomainConfig(
+      resetKind = SYNC,
+      resetActiveLevel = LOW
     )
 
     SpinalConfig(
       mode = Verilog,
-      targetDirectory = "./src/main/verilog/"
+      targetDirectory = "./src/main/verilog/",
+      defaultConfigForClockDomains = clockDomainConfig
     ).generate(new PoseidonTopLevel(config))
+
   }
 }

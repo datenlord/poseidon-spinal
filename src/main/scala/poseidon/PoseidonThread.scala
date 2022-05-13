@@ -95,32 +95,19 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
   
 
     // decide whether SBox5 is bypassed
-    val partialRound = False
-    switch(mulContext2.stateSize) {
-      is(3) {
-        partialRound := (mulContext2.roundIndex >= 4) && (mulContext2.roundIndex < 59)
-      }
-      is(5) {
-        partialRound := (mulContext2.roundIndex >= 4) && (mulContext2.roundIndex < 60)
-      }
-      is(9) {
-        partialRound := (mulContext2.roundIndex >= 4) && (mulContext2.roundIndex < 61)
-      }
-      is(12) {
-        partialRound := (mulContext2.roundIndex >= 4) && (mulContext2.roundIndex < 61)
-      }
-    }
+    import PoseidonParam._
+    val upperBound = sizeRange.map(
+      size => (mulContext2.stateSize===size)&(mulContext2.roundIndex < partialRoundMap(size)+halfRoundf)
+    )
+    val lowerBound = mulContext2.roundIndex >= 4
+    val partialRound = lowerBound && upperBound.reduce(_||_)
     val bypassSBox5 = (partialRound) && (mulContext2.stateIndex =/= 0)
 
     val output = mulOutput2.translateWith {
       val payload = new ContextCase(g)
       payload.assignSomeByName(mulContext2)
       payload.stateElement.allowOverride
-      payload.stateElement := Mux(
-        bypassSBox5,
-        mulContext2.stateElement,
-        mulOutput2.res
-      )
+      payload.stateElement := Mux(bypassSBox5,mulContext2.stateElement,mulOutput2.res)
       payload
     }.stage()
   }
