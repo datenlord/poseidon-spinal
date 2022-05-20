@@ -2,147 +2,220 @@ package poseidon
 
 import spinal.core._
 import spinal.lib._
-import spinal.lib.fsm._
 
 object AXI4StreamReceiver {
-  def apply(g: PoseidonGenerics, input: AXI4Stream): Stream[MDSContext] = {
+  def apply(g: PoseidonGenerics, input: Stream[AXI4Stream]): Stream[Context] = {
     val receiver = new AXI4StreamReceiver(g)
-    receiver.io.input.connectFrom(input)
+    receiver.io.input << input
     receiver.io.output
   }
 }
 
-class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
+case class ReceiverContext(g:PoseidonGenerics) extends Bundle{
+  val stateElement = UInt(g.dataWidth bits)
+  val stateIndex   = UInt(log2Up(g.sizeMax) bits)
+  val stateId      = UInt(g.idWidth bits)
+}
+
+case class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input = slave(AXI4Stream(g.dataWidth))
-    val output = master Stream (MDSContext(g))
+    val input  = slave  Stream (AXI4Stream(g.dataWidth))
+    val output = master Stream (Context(g))
   }
 
-  // deserialize the serial input from AXIStream Bus to get stateSize
-  val receiver = new Area {
-    val output = Stream(MDSContext(g))
-
-    val sizeCounter = Reg(UInt(log2Up(g.sizeMax) bits)) init (0)
-    val idCounter = Reg(UInt(g.idWidth bits)) init (0)
-    val buffer = Vec(Reg(UInt(g.dataWidth bits)), g.sizeMax)
-    buffer.foreach(_ init (0))
-
-    val receiverFSM = new StateMachine {
-      io.input.ready := False
-      output.valid := False
-      output.stateId := 0
-      output.stateSize := 0
-      output.stateElements.foreach(_ := 0)
-      output.roundIndex := 0
-
-      val BUSY = new State with EntryPoint
-      val DONE = new State
-
-      BUSY
-        .whenIsActive {
-          io.input.ready := True
-          when(io.input.fire()) {
-            buffer(sizeCounter) := io.input.payload
-            sizeCounter := sizeCounter + 1
-            when(io.input.last) { goto(DONE) }
-          }
-        }
-
-      DONE
-        .whenIsActive {
-          output.valid := True
-          output.stateSize := sizeCounter
-          output.stateId := idCounter
-          (output.stateElements lazyZip buffer).foreach(_ := _)
-
-          when(output.fire) {
-            io.input.ready := True
-            buffer.foreach(_ := 0)
-            idCounter := idCounter + 1
-            sizeCounter := 0
-            goto(BUSY)
-            when(io.input.fire()) {
-              buffer(0) := io.input.payload
-              sizeCounter := 1
-            }
-          }
-        }
+  val idCount = Counter(g.idWidth bits, inc = io.input.fire & io.input.tlast)
+  val indexCount = Counter(log2Up(g.sizeMax) bits)
+  when(io.input.fire){
+    when(io.input.tlast){
+      indexCount.clear()
+    }otherwise{
+      indexCount.increment()
     }
   }
 
-  io.output << receiver.output.stage()
+  val inputForked = StreamFork(io.input, 2, true)
+  val bufferInput = inputForked(0).translateWith{
+    val payload = ReceiverContext(g)
+    payload.stateElement := inputForked(0).tdata
+    payload.stateIndex := indexCount.value
+    payload.stateId := idCount.value
+    payload
+  }
+  val sizeInput = inputForked(1).translateWith((indexCount.value + 1)).takeWhen(io.input.tlast)
+
+  val bufferOutput = bufferInput.queue(g.sizeMax + 1)
+  val sizeCounter = sizeInput.m2sPipe()
+  val sizeHold = sizeCounter.forkSerial(bufferOutput.stateIndex===sizeCounter.payload-1)
+
+  val tempOutput =  StreamJoin(bufferOutput, sizeHold).translateWith{
+    val payload = Context(g)
+    payload.assignSomeByName(bufferOutput.payload)
+    payload.stateSize := sizeHold.payload
+    payload.roundIndex := 0
+    payload
+  }
+  io.output << tempOutput.s2mPipe().m2sPipe()
 }
 
-case class TransmitterContext(g: PoseidonGenerics) extends Bundle {
-  val state_id = UInt(g.idWidth bits)
-  val state_element = UInt(g.dataWidth bits)
-}
-
-object AXI4StreamTransmitter {
-  def apply(
-      g: PoseidonGenerics,
-      input: Stream[TransmitterContext]
-  ): AXI4Stream = {
-    val transmitterInst = new AXI4StreamTransmitter(g)
-    transmitterInst.io.input << input
-    transmitterInst.io.output
+object AXI4StreamTransmitter{
+  def apply(g:PoseidonGenerics, input:Stream[TransmitterContext]):Stream[AXI4Stream]={
+    val transmitter = AXI4StreamTransmitter(g)
+    transmitter.io.input << input
+    transmitter.io.output
   }
 }
 
-class AXI4StreamTransmitter(g: PoseidonGenerics) extends Component {
+case class TransmitterContext(g: PoseidonGenerics) extends Bundle{
+  val stateId = UInt(g.idWidth bits)
+  val stateElement = UInt(g.dataWidth bits)
+}
+
+case class AXI4StreamTransmitter(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input = slave Stream (TransmitterContext(g))
-    val output = master(AXI4Stream(g.dataWidth))
+    val input  = slave Stream (TransmitterContext(g)  )
+    val output = master Stream(AXI4Stream(g.dataWidth))
   }
 
-  val idCounter = Reg(UInt(g.idWidth bits)) init (0)
-  when(io.output.fire()) {
-    idCounter := idCounter + 1
+  val idCount = Counter(g.idWidth bits, inc=io.output.fire)
+  val demuxSelect = io.input.stateId === idCount.value
+  val inputDemuxed = StreamDemux(io.input, demuxSelect.asUInt, 2)
+
+  val bufferOutput = inputDemuxed(0).queue(g.transmitterQueue)
+
+  val arbiterInput0 = inputDemuxed(1).translateWith{
+    val payload = AXI4Stream(g.dataWidth)
+    payload.tdata := inputDemuxed(1).stateElement
+    payload.tlast := True
+    payload
   }
 
-  val loopback = Stream(TransmitterContext(g))
-  val temp = StreamArbiterFactory.lowerFirst.onArgs(io.input, loopback).stage()
-  val demuxOutputs = StreamDemux(temp, (temp.state_id === idCounter).asUInt, 2)
-  io.output.last := True
-  io.output.valid := demuxOutputs(1).valid
-  demuxOutputs(1).ready := io.output.ready
-  io.output.payload := demuxOutputs(1).state_element
-  loopback << demuxOutputs(0).queue(g.transmitterQueue).s2mPipe()
+  val arbiterInput1 = bufferOutput.translateWith{
+    val payload = AXI4Stream(g.dataWidth)
+    payload.tdata := bufferOutput.stateElement
+    payload.tlast := True
+    payload
+  }.haltWhen(bufferOutput.stateId =/= idCount.value)
 
-  // val inputTemp = io.input.s2mPipe().m2sPipe()
-  // val outputTemp = inputTemp.queue(bufferDepth)
-  // io.output.valid := outputTemp.valid
-  // io.output.payload := outputTemp.state_element
-  // io.output.last := True
-  // outputTemp.ready := io.output.ready
+  val tempOutput = StreamArbiterFactory.lowerFirst.onArgs(arbiterInput0,arbiterInput1)
+  io.output << tempOutput.s2mPipe().m2sPipe()
 
-  // val idCounter = Reg(UInt(g.idWidth bits)) init (0)
-  // when(io.output.fire()) {
-  //   idCounter := idCounter + 1
-  // }
-  // val input_demux = Vec(Stream(TransmitterContext(g)), bufferDepth)
-  // val demux_select = OHToUInt(OHMasking.first(input_demux.map(_.ready)))
-
-  // input_demux
-  //   .lazyZip(StreamDemux(io.input, demux_select, bufferDepth))
-  //   .foreach(_ << _)
-
-  // val buffer = input_demux.map(_.stage())
-  // val select = OHToUInt(
-  //   buffer
-  //     .map(_.valid)
-  //     .lazyZip(buffer.map(_.state_id))
-  //     .map(_ & _ === idCounter)
-  // )
-  // val buffer_out = StreamMux(select, buffer)
-
-  // io.output.valid := buffer_out.valid && buffer_out.state_id === idCounter
-  // io.output.last := True
-  // io.output.payload := buffer_out.state_element
-  // buffer_out.ready := io.output.ready && buffer_out.state_id === idCounter
 }
+
+
+// case class ReceiverContext(g:PoseidonGenerics) extends Bundle{
+//   val stateElements = Vec(UInt(g.dataWidth bits), g.sizeMax)
+//   val stateSize    = UInt(log2Up(g.sizeMax) bits)
+// }
+
+// case class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
+
+//   val io = new Bundle {
+//     val input  = slave  Stream (AXI4Stream(g.dataWidth))
+//     val output = master Stream (Context(g))
+//   }
+  
+//   val receiverFSM = new StateMachine {
+//     val input = io.input
+//     val output = Stream(ReceiverContext(g))
+
+//     val tempOutput = Reg(ReceiverContext(g))
+//     tempOutput.stateSize init(0)
+
+//     // set default value to output ports
+//     input.ready := False
+//     output.valid := False
+//     output.payload.assignSomeByName(tempOutput)
+
+//     val BUSY = new State with EntryPoint
+//     val DONE = new State
+
+//     BUSY
+//       .whenIsActive {
+//         io.input.ready := True
+//         when(io.input.fire){
+//           tempOutput.stateElements(tempOutput.stateSize) := io.input.tdata
+//           tempOutput.stateSize := tempOutput.stateSize + 1
+//           when(io.input.tlast) { goto(DONE) }
+//         }
+//       }
+
+//     DONE
+//       .whenIsActive {
+//         output.valid := True
+
+//         when(output.fire) {
+//           io.input.ready := True
+//           tempOutput.stateSize := 0
+//           when(io.input.fire) {
+//             tempOutput.stateElements(0):=io.input.tdata
+//             tempOutput.stateSize := 1
+//           }
+//           goto(BUSY)
+//         }
+//       }
+//   }
+
+//   val transmitterFSM = new StateMachine{
+//     val input = receiverFSM.output.stage()
+//     val output = Stream(Context(g))
+
+//     val tempOutput = Reg(ReceiverContext(g))
+//     val indexCount = Reg(UInt(log2Up(g.sizeMax) bits)) init(0)
+//     val idCount = Reg(UInt(g.idWidth bits)) init(0)
+
+//     input.ready := False
+//     output.valid := False
+//     output.stateElement := tempOutput.stateElements(indexCount)
+//     output.stateSize := tempOutput.stateSize
+//     output.roundIndex := 0
+//     output.stateIndex := indexCount
+//     output.stateId := idCount
+
+//     val IDLE = new State with EntryPoint
+//     val BUSY, DONE = new State
+
+//     IDLE
+//       .whenIsActive{
+//         input.ready := True
+//         when(input.fire){
+//           tempOutput.assignSomeByName(input.payload)
+//           goto(BUSY)
+//         }
+//       }
+    
+//     BUSY
+//       .whenIsActive{
+//         output.valid := True
+//         when(output.fire){
+//           indexCount := indexCount + 1
+//           when(indexCount === tempOutput.stateSize - 2){
+//             goto(DONE)
+//           }
+//         }
+//       }
+    
+//     DONE
+//       .whenIsActive{
+//         output.valid := True
+//         when(output.fire){
+//           input.ready := True
+//           idCount := idCount + 1
+//           indexCount := 0
+//           when(input.fire){
+//             tempOutput.assignSomeByName(input.payload)
+//             goto(BUSY)
+//           } otherwise{
+//             goto(IDLE)
+//           }
+//         }
+//       }
+//   }
+
+//   io.output << transmitterFSM.output.s2mPipe().m2sPipe()
+// }
+
 
 object AXI4StreamReceiverVerilog {
 
@@ -152,31 +225,30 @@ object AXI4StreamReceiverVerilog {
       roundMax = 65,
       loopNum = 3,
       dataWidth = 255,
-      idWidth = 5,
+      idWidth = 8,
       isSim = true
     )
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
-    ).generate(new AXI4StreamReceiver(config))
+    ).generate(AXI4StreamReceiver(config))
   }
 }
 
 object AXI4StreamTransmitterVerilog {
-
   def main(args: Array[String]): Unit = {
     val config = PoseidonGenerics(
       sizeMax = 12,
       roundMax = 65,
-      loopNum = 2,
+      loopNum = 3,
       dataWidth = 255,
-      idWidth = 5,
-      isSim = true,
-      transmitterQueue = 20
+      idWidth = 8,
+      isSim = true
     )
+
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog"
-    ).generate(new AXI4StreamTransmitter(config))
+    ).generate(AXI4StreamTransmitter(config))
   }
 }

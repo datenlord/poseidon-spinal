@@ -8,7 +8,7 @@ class Context:
     modulus = 0x73EDA753299D7D483339D80809A1D80553BDA402FFFE5BFEFFFFFFFF00000001
     id_width = 8
 
-    def check_parameter_range(round=0, index=0, size=3, id=0):
+    def check_parameter_range(round=0, index=0, size=3):
 
         assert size in Context.size_range, "input size is out of range"
         index_exception = (size == 5) & (index == 5)
@@ -18,15 +18,14 @@ class Context:
         assert (round >= 0) & (
             round < Context.round_map[size]
         ), "round_index is out of range"
-        assert (id >= 0) & (id < pow(2, Context.id_width)), "state_id is out of range"
 
-    def __init__(self, round=0, index=0, size=3, id=0, element=0):
-        Context.check_parameter_range(round, index, size, id)
+    def __init__(self, round=0, index=0, size=3, id=0,element=0):
+        Context.check_parameter_range(round, index, size)
 
         self.round_index = round
         self.state_index = index
         self.state_size = size
-        self.state_id = id
+        self.state_id = id % pow(2, Context.id_width)
         self.state_element = PrimeField(element)
 
     def set_rand_values(self):
@@ -52,7 +51,7 @@ class Context:
         round_equal = self.round_index == context.round_index
         id_equal = self.state_id == context.state_id
         element_equal = self.state_element.value == context.state_element.value
-        return size_equal & index_equal & round_equal & id_equal & element_equal
+        return size_equal & index_equal & round_equal & element_equal & id_equal
 
     def print_context_info(self):
         print(f"state_id:{self.state_id}")
@@ -77,14 +76,21 @@ class Context:
         exec(f"self.state_element.value = int(dut.{prefix}stateElement.value)")
         exec(f"self.state_id = int(dut.{prefix}stateId.value)")
 
-    def get_context_vec(cases_count, state_size=None):
+    def get_context_vec(state_size=None, round_index=None, state_id=None):
+        if state_id == None:
+            id = random.randint(0, pow(2,Context.id_width)-1)
+        else:
+            id = state_id % pow(2, Context.id_width)
+        
         if(state_size == None):
             size = Context.size_range[random.randint(0, 3)]
         else:
             size = state_size
         
-        round = random.randint(0, Context.round_map[size] - 1)
-        id = cases_count % pow(2, Context.id_width)
+        if(round_index == None):
+            round = random.randint(0, Context.round_map[size] - 1)
+        else:
+            round = round_index
 
         context_vec = []
         for i in range(size):

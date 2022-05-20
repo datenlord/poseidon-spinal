@@ -7,7 +7,7 @@ from queue import Queue
 from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic
 
-CASES_NUM = 250
+CASES_NUM = 200
 
 
 class PoseidonTopLevelTester:
@@ -28,7 +28,7 @@ class PoseidonTopLevelTester:
         """get random input values"""
         size_range = [3, 5, 9, 12]
         # state_size  = size_range[random.randint(0,3)]
-        state_size = 3  # size_range[int(cases_count / 25)]
+        state_size = 9  # size_range[int(cases_count / 25)]
         state_elements = []
         for i in range(state_size):
             state_elements.append(ff.PrimeField(random.randint(0, basic.P - 1)))
@@ -43,8 +43,8 @@ class PoseidonTopLevelTester:
             # assign random valuess to dut io port
             for i in range(len(state_elements)):
                 self.dut.io_input_valid.value = True  # (random.random()>0.2)
-                self.dut.io_input_payload.value = state_elements[i].value
-                self.dut.io_input_last.value = i == (len(state_elements) - 1)
+                self.dut.io_input_payload_tdata.value = state_elements[i].value
+                self.dut.io_input_payload_tlast.value = i == (len(state_elements) - 1)
 
                 await RisingEdge(self.dut.clk)
 
@@ -53,7 +53,7 @@ class PoseidonTopLevelTester:
                 ) == False:
                     self.dut.io_input_valid.value = True  # (random.random()>0.2)
                     await RisingEdge(self.dut.clk)
-            print("input case {}".format(cases_count))
+            print("input case {}\n".format(cases_count))
             cases_count += 1
             self.ref_inputs.put(state_elements)
             self.ref_outputs.put(poseidon_ff.poseidon_hash_ff(state_elements))
@@ -71,7 +71,7 @@ class PoseidonTopLevelTester:
             if (
                 self.dut.io_output_ready.value & self.dut.io_output_valid.value
             ) == True:
-                dut_res = int(self.dut.io_output_payload.value)
+                dut_res = int(self.dut.io_output_payload_tdata.value)
                 # dut_res = int(self.dut.io_output_payload_state_element.value)
                 ref_input = self.ref_inputs.get()
                 ref_output = self.ref_outputs.get()
@@ -88,7 +88,7 @@ class PoseidonTopLevelTester:
 
                     raise TestFailure(" test failed!!! ")
 
-                print("output case {}".format(count_cases))
+                print("output case {}\n".format(count_cases))
                 count_cases += 1
 
         raise TestSuccess(" pass {} test cases".format(CASES_NUM))
@@ -100,8 +100,8 @@ async def PoseidonTopLevelTest(dut):
 
     # set default values to dut ports
     dut.io_input_valid.value = False
-    dut.io_input_payload.value = 0
-    dut.io_input_last.value = False
+    dut.io_input_payload_tdata.value = 0
+    dut.io_input_payload_tlast.value = False
 
     dut.io_output_ready.value = False
 
@@ -110,66 +110,61 @@ async def PoseidonTopLevelTest(dut):
     await tester.reset_dut()
     await cocotb.start(tester.generate_input())
     await cocotb.start(tester.check_output())
-    # rindex = [0,0,0,0]
+    
+    loop2_file = open("loop2_log.txt","w")
+    loop3_file = open("loop3_log.txt", "w")
+    trans_log = open("trans_log.txt","w")
     loop2 = dut.poseidonLoop_2
     loop3 = dut.poseidonLoop_3
     while True:
         await RisingEdge(dut.clk)
-        # if (
-        #     dut.streamArbiter_6_io_output_m2sPipe_valid.value
-        #     & dut.aXI4StreamTransmitter_1_io_input_ready.value
-        # ):
-        #     state_id = int(dut.streamArbiter_6_io_output_m2sPipe_payload_state_id.value)
-        #     print("transmitter input:")
-        #     print(f"state id: {state_id}"+"\n")
+        # Loop Input Signals
         
-        
-        # valid = dut.poseidonDispatcher_1_io_outputs_0_valid
-        # ready = dut.poseidonLoop_2_io_input_ready
-        # if(valid.value & ready.value):
-        #     state_id = dut.poseidonDispatcher_1_io_outputs_0_payload_stateId.value
-        #     print("loop 2 input: ")
-        #     print(f"state_id:{int(state_id)}"+"\n")
-        
-        # valid = dut.poseidonDispatcher_1_io_outputs_1_valid
-        # ready = dut.poseidonLoop_3_io_input_ready
-        # if(valid.value & ready.value):
-        #     state_id = dut.poseidonDispatcher_1_io_outputs_1_payload_stateId.value
-        #     print("loop 3 input: ")
-        #     print(f"state_id:{int(state_id)}"+"\n")
+        # if(dut.poseidonDispatcher_1_io_outputs_0_valid.value&dut.poseidonLoop_2_io_input_ready.value):
+        #     index = dut.poseidonDispatcher_1_io_outputs_0_payload_stateIndex.value
+        #     id = dut.poseidonDispatcher_1_io_outputs_0_payload_stateId.value
+        #     print(f"loop2: \nid:{int(id)} \nindex:{int(index)}\n")
+        #     cases_count += 1
             
+        # if(dut.poseidonDispatcher_1_io_outputs_1_valid.value&dut.poseidonLoop_3_io_input_ready.value):
+        #     index = dut.poseidonDispatcher_1_io_outputs_1_payload_stateIndex.value
+        #     id = dut.poseidonDispatcher_1_io_outputs_1_payload_stateId.value
+        #     print(f"loop3: \nid:{int(id)} \nindex:{int(index)}\n")
+        #     cases_count += 1
         
         valid = loop2.streamArbiter_6_io_output_valid
-        ready = loop2.poseidonSerializer_2_io_parallelInput_ready
+        ready = loop2.streamArbiter_6_io_output_ready
         if(valid.value & ready.value):
-            state_id = loop2.streamArbiter_6_io_output_payload_stateId.value
+            sIndex = loop2.streamArbiter_6_io_output_payload_stateIndex.value
             rIndex = loop2.streamArbiter_6_io_output_payload_roundIndex.value
+            id = loop2.streamArbiter_6_io_output_payload_stateId.value
+            loop2_file.write(f"id{int(id)} state_index:{int(sIndex)} round_index:{int(rIndex)}\n")
             print("loop 2 arbiter output: ")
-            print(f"state_id:{int(state_id)}")
+            print(f"id:{int(id)}")
+            print(f"state_index:{int(sIndex)}")
             print(f"round_index:{int(rIndex)}"+"\n")
         
         valid = loop3.streamArbiter_6_io_output_valid
-        ready = loop3.poseidonSerializer_2_io_parallelInput_ready
+        ready = loop3.streamArbiter_6_io_output_ready
         if(valid.value & ready.value):
-            state_id = loop3.streamArbiter_6_io_output_payload_stateId.value
+            sIndex = loop3.streamArbiter_6_io_output_payload_stateIndex.value
             rIndex = loop3.streamArbiter_6_io_output_payload_roundIndex.value
+            id = loop3.streamArbiter_6_io_output_payload_stateId.value
+            loop3_file.write(f"id{int(id)} state_index:{int(sIndex)} round_index:{int(rIndex)}\n")
             print("loop 3 arbiter output: ")
-            print(f"state_id:{int(state_id)}")
+            print(f"id:{int(id)}")
+            print(f"state_index:{int(sIndex)}")
             print(f"round_index:{int(rIndex)}"+"\n")
+        
+        # transmitter Input
+        valid = dut.transmitterInput_valid
+        ready = dut.aXI4StreamTransmitter_1_io_input_ready
+        if(valid.value & ready.value):
+            trans_log.write(f"transmitter input id:{id}\n")
+            id = int(dut.transmitterInput_payload_stateId.value)
+            print(f"transmitter input id:{id}\n")
+        
 
-        # if (
-        #     dut.poseidonLoop_3.streamArbiter_49_io_output_valid.value
-        #     & dut.poseidonLoop_3.poseidonSerializer_3_io_parallelInput_ready.value
-        # ) == True:
-        #     round_index = int(
-        #         dut.poseidonLoop_3.streamArbiter_49_io_output_payload_round_index.value
-        #     )
-        #     state_id = int(
-        #         dut.poseidonLoop_3.streamArbiter_49_io_output_payload_state_id.value
-        #     )
-        #     print("Thread0: ")
-        #     print(f"state_id: {state_id}")
-        #     print(f"round_index: {round_index}")
 
 
 

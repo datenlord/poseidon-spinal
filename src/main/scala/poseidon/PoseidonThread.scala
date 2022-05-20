@@ -3,11 +3,9 @@ package poseidon
 import spinal.core._
 import spinal.lib._
 
-case class BasicContextCase(g: PoseidonGenerics) extends BasicContext(g) {}
-case class ContextCase(g: PoseidonGenerics) extends Context(g) {}
 
 object PoseidonThread {
-  def apply(g: PoseidonGenerics, input: Flow[Context]): Flow[MDSContext] = {
+  def apply(g: PoseidonGenerics, input: Flow[Context]): Flow[Context] = {
     val threadInst = new PoseidonThread(g)
     threadInst.io.input << input
     threadInst.io.output
@@ -17,8 +15,8 @@ object PoseidonThread {
 class PoseidonThread(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input  = slave Flow (new Context(g))
-    val output = master Flow (MDSContext(g))
+    val input  = slave Flow (Context(g))
+    val output = master Flow (Context(g))
   }
 
   // set configuration parameters of MontgomeryMult implemented through Xilinx Multiplier IP
@@ -50,12 +48,12 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
       operands(g.dataWidth, inputDelayed.stateElement, constant)
     }
     val addOutput = ModularAdderFlow(addConfig, XilinxIPConfig.adder0, addInput)
-    val addContext = BasicContextCase(g)
+    val addContext = BasicContext(g)
     addContext.assignSomeByName(inputDelayed.payload)
     val addContextDelayed = Delay(addContext, ModularAdderFlow.latency(XilinxIPConfig.adder0))
 
     val output = addOutput.translateWith {
-      val payload = ContextCase(g)
+      val payload = Context(g)
       payload.assignSomeByName(addContextDelayed)
       payload.stateElement := addOutput.res
       payload
@@ -104,7 +102,7 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     val bypassSBox5 = (partialRound) && (mulContext2.stateIndex =/= 0)
 
     val output = mulOutput2.translateWith {
-      val payload = new ContextCase(g)
+      val payload = new Context(g)
       payload.assignSomeByName(mulContext2)
       payload.stateElement.allowOverride
       payload.stateElement := Mux(bypassSBox5,mulContext2.stateElement,mulOutput2.res)

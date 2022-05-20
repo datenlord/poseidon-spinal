@@ -3,29 +3,6 @@ package poseidon
 import spinal.core._
 import spinal.lib._
 
-case class AXI4Stream(data_width: Int) extends Bundle with IMasterSlave {
-  val valid = Bool()
-  val ready = Bool()
-  val last = Bool()
-  val payload = UInt(data_width bits)
-
-  override def asMaster(): Unit = {
-    out(valid, last, payload)
-    in(ready)
-  }
-
-  def fire(): Bool = {
-    this.valid & this.ready
-  }
-
-  def connectFrom(that: AXI4Stream): Unit = {
-    this.valid := that.valid
-    this.last := that.last
-    this.payload := that.payload
-    that.ready := this.ready
-  }
-}
-
 object PoseidonParam {
   val fullRound: Int = 8  // the number of full rounds in Poseidon
   val halfRoundf: Int = 4 // half of the number of full rounds
@@ -35,6 +12,13 @@ object PoseidonParam {
     5 -> 56,
     9 -> 57,
     12 -> 57
+  )
+
+  val maxRoundIndex: Map[Int, Int] = Map(
+    3 -> 62,
+    5 -> 63,
+    9 -> 64,
+    12 -> 64
   )
   val modulus = BigInt(
     "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
@@ -93,70 +77,65 @@ object XilinxIPConfig{
   )
 
   val fifo = FifoIPConfig(
-    byteWidth = 77, 
-    depth = 64,
+    byteWidth = 35, 
+    depth = 128,
     name = "axis_data_fifo_0"
   )
 
 }
 
-
-class BasicContext(g: PoseidonGenerics) extends Bundle {
-  val roundIndex = UInt(log2Up(g.roundMax) bits)
-  val stateIndex = UInt(log2Up(g.sizeMax) bits)
-  val stateSize = UInt(log2Up(g.sizeMax) bits)
-  val stateId = UInt(g.idWidth bits) // TODO: Remove stateId from Context
+case class AXI4Stream(dataWidth: Int) extends Bundle {
+  val tlast = Bool()
+  val tdata = UInt(dataWidth bits)
 }
 
-class Context(g: PoseidonGenerics) extends BasicContext(g) {
-  val stateElement = UInt(g.dataWidth bits)
+case class BasicContext(g: PoseidonGenerics) extends Bundle {
+  val roundIndex = UInt(log2Up(g.roundMax) bits)
+  val stateIndex = UInt(log2Up(g.sizeMax) bits)
+  val stateSize  = UInt(log2Up(g.sizeMax) bits)
+  val stateId = UInt(g.idWidth bits)
+}
+
+case class Context(g: PoseidonGenerics) extends Bundle{
+  val roundIndex   = UInt(log2Up(g.roundMax) bits)
+  val stateIndex   = UInt(log2Up(g.sizeMax) bits)
+  val stateSize    = UInt(log2Up(g.sizeMax) bits)
+  val stateId      = UInt(g.idWidth bits)
+  val stateElement = UInt( g.dataWidth bits)
 }
 
 case class LoopbackDeMux(g: PoseidonGenerics) extends Component {
   val io = new Bundle {
-    val input = slave Stream (MDSContext(g))
-    val output0 = master Stream (MDSContext(g))
-    val output1 = master Stream (TransmitterContext(g))
-  }
-  val input = io.input
-  val select = False
-  val inputDemuxed = StreamDemux(input, select.asUInt, 2)
-  switch(input.stateSize) {
-    is(3) {
-      select := input.roundIndex === 62
-    }
-    is(5) {
-      select := input.roundIndex === 63
-    }
-    is(9) {
-      select := input.roundIndex === 64
-    }
-    is(12) {
-      select := input.roundIndex === 64
-    }
+    val input = slave Stream (Context(g))
+    val output0 = master Stream (Context(g))
+    val output1 = master Stream (Context(g))
   }
 
-  io.output0 << inputDemuxed(0).translateWith {
-    val payload = MDSContext(g)
+  import PoseidonParam._
+  val input = io.input
+  val done = sizeRange.map(
+    size => (input.stateSize === size) & (input.roundIndex === maxRoundIndex(size)) 
+  )
+  val select = done.reduce(_||_)
+  val inputDemuxed = StreamDemux(input, select.asUInt, 2)
+
+  io.output0 << inputDemuxed(0).translateWith{
+    val payload = Context(g)
     payload.assignSomeByName(inputDemuxed(0).payload)
     payload.roundIndex.allowOverride
     payload.roundIndex := inputDemuxed(0).roundIndex + 1
     payload
-  }
+  }.s2mPipe().m2sPipe()
 
-  io.output1 << inputDemuxed(1).translateWith {
-    val payload = TransmitterContext(g)
-    payload.state_element := inputDemuxed(1).stateElements(1)
-    payload.state_id := inputDemuxed(1).stateId
-    payload
-  }
+  val take = (inputDemuxed(1).stateIndex === 1)
+  io.output1 << inputDemuxed(1).takeWhen(take).s2mPipe().m2sPipe()
 }
 
 object PoseidonLoop {
   def apply(
       g: PoseidonGenerics,
-      input: Stream[MDSContext]
-  ): Stream[TransmitterContext] = {
+      input: Stream[Context]
+  ): Stream[Context] = {
     val loopInst = PoseidonLoop(g)
     loopInst.io.input << input
     loopInst.io.output
@@ -166,29 +145,67 @@ object PoseidonLoop {
 case class PoseidonLoop(g: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input = slave Stream (MDSContext(g))
-    val output = master Stream (TransmitterContext(g))
+    val input  = slave Stream (Context(g))
+    val output = master Stream (Context(g))
   }
 
-  val loopback = Stream(MDSContext(g))
-  // serialize the parallel data from loopInput or loopback
-
-  val dataMuxed = StreamArbiterFactory.lowerFirst.onArgs(loopback, io.input)
   //
+  val dataMux = new Area{
+    val input = io.input
+    val loopback = Stream(Context(g))
+    
+    val loopbackHalt = Reg(Bool()) init(False)
+    when(input.fire){
+      when(input.stateIndex === 0){
+        loopbackHalt := True
+      } elsewhen(input.stateIndex === input.stateSize-1){
+        loopbackHalt := False
+      }
+    }
+    val loopbackMusked = loopback.haltWhen(loopbackHalt)
+    val output = StreamArbiterFactory.lowerFirst.onArgs(loopbackMusked, io.input)
+  }
 
-  val (serializerOutput, isDelayEmpty) = PoseidonSerializer(g, dataMuxed)
   //
-  val threadOutput = PoseidonThread(g, serializerOutput.toFlow)
+  val threadInputControl = new Area{
+    val input = dataMux.output
+    val arbiterCounter = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
+    val stateSize = Reg( UInt(log2Up(g.sizeMax) bits) ) init(0)
+    val countEnable = arbiterCounter + 1 < stateSize
   
-  val demuxInst = LoopbackDeMux(g)
+    val delayInput = input.asFlow.throwWhen(input.stateIndex < g.peNum)
+    val delayOutput = FlowDelay(delayInput, g.mdsOperandLatency)
 
-  demuxInst.io.input << threadOutput.toStream
-  loopback << BundleFifo(demuxInst.io.output0, XilinxIPConfig.fifo, g.isSim)
-  io.output << demuxInst.io.output1.stage() //add a stage of register
+
+    val arbiterInput0 = delayOutput.toStream
+    val arbiterInput1 = input.haltWhen(countEnable)
+  
+    when(countEnable){
+      arbiterCounter := arbiterCounter + 1
+    } otherwise{
+      arbiterCounter := 0
+      stateSize := 0
+      when(arbiterInput0.valid){
+        stateSize := arbiterInput0.stateSize
+      }
+    }
+    val arbiterOutput = StreamArbiterFactory.lowerFirst.onArgs(arbiterInput0, arbiterInput1)
+    val output = arbiterOutput.toFlow.stage()
+  }
+
+  //
+  val threadOutput = PoseidonThread(g, threadInputControl.output)
+  val threadBuffer = BundleFifo(threadOutput.toStream, XilinxIPConfig.fifo, g.isSim)
+  
+  //
+  val demuxInst = LoopbackDeMux(g)
+  demuxInst.io.input << threadBuffer
+  dataMux.loopback  << demuxInst.io.output0
+  io.output << demuxInst.io.output1
 }
 
 object PoseidonDispatcher{
-  def apply(g:PoseidonGenerics, portCount:Int, input:Stream[MDSContext]):Vec[Stream[MDSContext]]={
+  def apply(g:PoseidonGenerics, portCount:Int, input:Stream[Context]):Vec[Stream[Context]]={
     val dispatcher = PoseidonDispatcher(g, portCount)
     dispatcher.io.input << input
     dispatcher.io.outputs
@@ -196,9 +213,10 @@ object PoseidonDispatcher{
 }
 
 case class PoseidonDispatcher(g:PoseidonGenerics, portCount:Int) extends Component{
+
   val io = new Bundle{
-    val input = slave Stream(MDSContext(g))
-    val outputs = Vec(master Stream(MDSContext(g)), portCount)
+    val input = slave Stream(Context(g))
+    val outputs = Vec(master Stream(Context(g)), portCount)
   }
 
   io.input.ready := io.outputs.map(_.ready).reduce(_||_)
@@ -216,21 +234,22 @@ case class PoseidonDispatcher(g:PoseidonGenerics, portCount:Int) extends Compone
 class PoseidonTopLevel(config: PoseidonGenerics) extends Component {
 
   val io = new Bundle {
-    val input = slave(AXI4Stream(config.dataWidth))
-    val output = master(AXI4Stream(config.dataWidth))
+    val input  = slave  Stream(AXI4Stream(config.dataWidth))
+    val output = master Stream(AXI4Stream(config.dataWidth))
   }
-  
-
-  // val initialInput = AXI4StreamReceiver(config, io.input)
-  // val loopOutput = PoseidonLoop(config, initialInput)
 
   val initialInput = AXI4StreamReceiver(config, io.input)
   val loopInputs = PoseidonDispatcher(config, config.loopNum, initialInput)
   val loopOutputs = loopInputs.map(PoseidonLoop(config, _))
-  val loopOutput = StreamArbiterFactory.lowerFirst.on(loopOutputs)
+  val loopOutput = StreamArbiterFactory.lowerFirst.on(loopOutputs).stage()
 
-
-  io.output.connectFrom(AXI4StreamTransmitter(config, loopOutput.stage()))
+  val transmitterInput = loopOutput.translateWith{
+    val payload = TransmitterContext(config)
+    payload.assignSomeByName(loopOutput.payload)
+    payload
+  }
+  
+  io.output << AXI4StreamTransmitter(config, transmitterInput)
 }
 
 object LoopbackDeMuxVerilog {
@@ -261,8 +280,8 @@ object PoseidonTopLevelVerilog {
       idWidth = 8,
       isSim = true,
       constantMemType = true,
-      transmitterQueue = 25,
-      flowQueue = 20
+      transmitterQueue = 128,
+      flowQueue = 30
     )
     
     val clockDomainConfig = ClockDomainConfig(

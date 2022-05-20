@@ -2,112 +2,18 @@ package poseidon
 
 import spinal.core._
 import spinal.lib._
-import spinal.lib.fsm._
 
-case class MDSContext(g: PoseidonGenerics) extends Bundle {
-  val roundIndex = UInt(log2Up(g.roundMax) bits)
-  val stateSize = UInt(log2Up(g.sizeMax) bits)
-  val stateId = UInt(g.idWidth bits)
+case class MDSContext(g:PoseidonGenerics) extends Bundle{
   val stateElements = Vec(UInt(g.dataWidth bits), g.sizeMax)
+  val stateSize    = UInt(log2Up(g.sizeMax) bits)
+  val roundIndex   = UInt(log2Up(g.roundMax) bits)
 }
-
-case class MDSMulContext(g: PoseidonGenerics) extends Bundle {
-  val roundIndex = UInt(log2Up(g.roundMax) bits)
-  val stateSize = UInt(log2Up(g.sizeMax) bits)
-  val stateId = UInt(g.idWidth bits)
-}
-
-object MDSMatrixMultiplier {
-  def apply(
-      g: PoseidonGenerics,
-      mulConfig: MontMultConfig,
-      ipConfig: MulIPConfig,
-      input: Flow[ContextCase]
-  ): Flow[MDSContext] = {
-    val MDSMultiplierInst = new MDSMatrixMultiplier(g, mulConfig, ipConfig)
-    MDSMultiplierInst.io.input << input
-    MDSMultiplierInst.io.output
-  }
-}
-
-case class MDSMatrixMultiplier(
-    g: PoseidonGenerics,
-    mulConfig: MontMultConfig,
-    ipConfig: MulIPConfig
-) extends Component {
-
-  val io = new Bundle {
-    val input = slave Flow (ContextCase(g))
-    val output = master Flow (MDSContext(g))
-  }
-
-  // mds_matrix_rom
-  val mdsMatrix_t3 =
-    MDSMatrix(t = 3, dataWidth = g.dataWidth, io.input.stateIndex.resized)
-  val mdsMatrix_t5 =
-    MDSMatrix(t = 5, dataWidth = g.dataWidth, io.input.stateIndex.resized)
-  val mdsMatrix_t9 =
-    MDSMatrix(t = 9, dataWidth = g.dataWidth, io.input.stateIndex.resized)
-  val mdsMatrix_t12 =
-    MDSMatrix(t = 12, dataWidth = g.dataWidth, io.input.stateIndex.resized)
-  // mdsMatrix_t3.io.address_port  := io.input.state_index.resized
-  // mdsMatrix_t5.io.address_port  := io.input.state_index.resized
-  // mdsMatrix_t9.io.address_port  := io.input.state_index.resized
-  // mdsMatrix_t12.io.address_port := io.input.state_index.resized
-
-  val mdsConstants = Vec(UInt(g.dataWidth bits), g.sizeMax)
-  switch(io.input.stateSize) {
-    is(3) {
-      mdsConstants.assignFromBits(
-        B(0, (g.sizeMax - 3) * g.dataWidth bits) ## mdsMatrix_t3.asBits
-      )
-    }
-    is(5) {
-      when(io.input.stateIndex === 5) {
-        mdsConstants.assignFromBits(B(0, g.sizeMax * g.dataWidth bits))
-      } otherwise {
-        mdsConstants.assignFromBits(
-          B(0, (g.sizeMax - 5) * g.dataWidth bits) ## mdsMatrix_t5.asBits
-        )
-      }
-    }
-    is(9) {
-      mdsConstants.assignFromBits(
-        B(0, (g.sizeMax - 9) * g.dataWidth bits) ## mdsMatrix_t9.asBits
-      )
-    }
-    is(12) {
-      mdsConstants.assignFromBits(mdsMatrix_t12.asBits)
-    }
-    default {
-      mdsConstants.assignFromBits(B(0, g.sizeMax * g.dataWidth bits))
-    }
-  }
-
-  val mulInputs = for (i <- 0 until g.sizeMax) yield io.input.translateWith {
-    operands(g.dataWidth, io.input.stateElement, mdsConstants(i))
-  }
-
-
-  val mulOutputs = mulInputs.map(MontgomeryMultFlow(mulConfig, ipConfig, _))
-
-  val mulContext = MDSMulContext(g)
-  mulContext.assignSomeByName(io.input.payload)
-  val mulContextDelayed = Delay(mulContext, MontgomeryMultFlow.latency(mulConfig, ipConfig))
-
-  // val mulResJoined = StreamJoin(mulOutputs)
-
-  io.output.valid := mulOutputs.map(_.valid).asBits().andR
-  io.output.payload.assignSomeByName(mulContextDelayed)
-  io.output.payload.stateElements
-    .assignFromBits(mulOutputs.map(_.res).asBits())
-}
-
 
 case class PEContext(g:PoseidonGenerics) extends Bundle {
   val peCounter    = UInt(log2Up(g.sizeMax) bits)
   val stateElement = UInt(g.dataWidth bits)
   val stateSize    = UInt(log2Up(g.sizeMax) bits)
+  val stateIndex   = UInt(log2Up(g.sizeMax) bits)
   val roundIndex   = UInt(log2Up(g.roundMax) bits)
   val stateId      = UInt(g.idWidth bits)
 }
@@ -130,8 +36,9 @@ case class PEConnection(g:PoseidonGenerics) extends Bundle with IMasterSlave{
 
 
 case class MDSAdderContext(g:PoseidonGenerics) extends Bundle{
-  val peCounter    = UInt(log2Up(g.sizeMax) bits)
-  val stateSize    = UInt(log2Up(g.sizeMax) bits)
+  val peCounter    = UInt(log2Up(g.sizeMax)  bits)
+  val stateSize    = UInt(log2Up(g.sizeMax)  bits)
+  val stateIndex   = UInt(log2Up(g.sizeMax)  bits)
   val roundIndex   = UInt(log2Up(g.roundMax) bits)
   val stateId      = UInt(g.idWidth bits)
 }
@@ -168,6 +75,8 @@ object ProcessingEngine{
     peInst.io.output
   }
 }
+
+
 // the processing engine of systolic array in MDSMixing
 case class ProcessingEngine(peTag:Int, g:PoseidonGenerics, modArith:ModArithmetic) extends Component{
   val io = new Bundle{
@@ -234,6 +143,7 @@ case class ProcessingEngine(peTag:Int, g:PoseidonGenerics, modArith:ModArithmeti
     payload.op2 := io.input.context.stateElement
     payload
   }
+
   val addOutput = ModularAdderFlow(modArith.addConfig, modArith.addIP, addInput)
   val addContext = MDSAdderContext(g)
   addContext.assignSomeByName(io.input.context.payload)
@@ -259,7 +169,7 @@ case class ProcessingEngine(peTag:Int, g:PoseidonGenerics, modArith:ModArithmeti
 
 
 object MDSMixing{
-  def apply(g:PoseidonGenerics, modArith:ModArithmetic, input:Flow[ContextCase]):Flow[MDSContext]={
+  def apply(g:PoseidonGenerics, modArith:ModArithmetic, input:Flow[Context]):Flow[Context]={
     val mdsInst = MDSMixing(g, modArith)
     mdsInst.io.input := input
     mdsInst.io.output
@@ -269,10 +179,9 @@ object MDSMixing{
 case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Component{
 
   val io = new Bundle{
-    val input  = slave Flow(ContextCase(g))
-    val output = master Flow(MDSContext(g))
+    val input  = slave Flow(Context(g))
+    val output = master Flow(Context(g))
   }
-
   // The Array Of Processing Engines
   val peConnections = Vec(PEConnection(g), g.peNum+1)
   for(i <- 0 until g.peNum){
@@ -330,58 +239,11 @@ case class MDSMixing(g:PoseidonGenerics, modArith:ModArithmetic) extends Compone
     
   }
 
-
-  val MDSOutputFSM = new StateMachine {
-    val input = peOutputLogic.output
-    val output = Flow(MDSContext(g))
-    val counter = Reg(UInt(log2Up(g.sizeMax) bits)) init (0)
-    val tempOutput = Reg(MDSContext(g))
-    tempOutput.stateElements.foreach(_ init(0))
-    tempOutput.stateSize init(0)
-    tempOutput.roundIndex init(0)
-    tempOutput.stateId init(0)
-    output.payload.assignSomeByName(tempOutput)
-    output.valid := False
-
-    val IDLE = new State with EntryPoint
-    val BUSY, DONE = new State
-
-    IDLE
-      .whenIsActive{
-        when(input.valid){
-          tempOutput.assignSomeByName(input.payload)
-          tempOutput.stateElements(counter) := input.stateElement
-          counter := counter + 1
-          goto(BUSY)
-        }
-      }
-
-    BUSY
-      .whenIsActive{
-        when(input.valid){
-          tempOutput.stateElements(counter) := input.stateElement
-          counter := counter + 1
-          when(counter+1 === tempOutput.stateSize){
-            goto(DONE)
-          }
-        }
-      }.onExit(counter:=0)
-
-    DONE
-      .whenIsActive{
-        output.valid := True
-        when(input.valid){
-          tempOutput.assignSomeByName(input.payload)
-          tempOutput.stateElements(counter) := input.stateElement
-          counter := counter + 1
-          goto(BUSY)
-        } otherwise{
-          goto(IDLE)
-        }
-      }
-  }
-
-  io.output << MDSOutputFSM.output
+  io.output := peOutputLogic.output.translateWith{
+    val payload = Context(g)
+    payload.assignSomeByName(peOutputLogic.output.payload)
+    payload
+  }.stage()
 }
 
 
@@ -486,44 +348,3 @@ object MDSMixingVerilog{
   }
 }
 
-object MDSMatrixMultiplierVerilog {
-  def main(args: Array[String]): Unit = {
-    val poseidonConfig = PoseidonGenerics(
-      sizeMax = 12,
-      roundMax = 65,
-      loopNum = 5,
-      dataWidth = 255,
-      idWidth = 8,
-      isSim = true
-    )
-
-    val modulus = BigInt(
-      "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
-      16
-    )
-    val modInverse = BigInt(
-      "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
-      16
-    )
-    val compensation = BigInt(
-      "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
-      16
-    )
-    val montMultConfig =
-      MontMultConfig(255, 256, modulus, modInverse, compensation, true)
-
-    val mulIPConfig = MulIPConfig(
-      inputWidth = 34,
-      outputWidth = 68,
-      isCE = false,
-      isSCLR = false,
-      pipeStages = 6,
-      moduleName = "mult_gen_0"
-    )
-
-    SpinalConfig(
-      mode = Verilog,
-      targetDirectory = "./src/main/verilog/"
-    ).generate(MDSMatrixMultiplier(poseidonConfig, montMultConfig, mulIPConfig))
-  }
-}
