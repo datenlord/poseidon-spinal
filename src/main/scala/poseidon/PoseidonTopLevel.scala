@@ -52,13 +52,13 @@ object PoseidonParam {
 }
 
 case class PoseidonGenerics(
-    sizeMax: Int,    // maximum size of internal state
-    roundp: Int,     // maximum number of partial rounds
-    roundf: Int,     // maxium number of full rounds
-    dataWidth: Int,  // width of state element
-    idWidth: Int,    // width of state id
-    isSim: Boolean,  // indicate whether the generated codes are used for simulation
-    loopNum: Int = 1,  // the number of PoseidonLoop
+    sizeMax: Int, // maximum size of internal state
+    roundp: Int, // maximum number of partial rounds
+    roundf: Int, // maxium number of full rounds
+    dataWidth: Int, // width of state element
+    idWidth: Int, // width of state id
+    isSim: Boolean, // indicate whether the generated codes are used for simulation
+    loopNum: Int = 1, // the number of PoseidonLoop
     constantMemType: Boolean = true, // indicate round constants' memory type
     // true:distributed memory false:block memory
     transmitterQueue: Int = 10, // the depth of queue in AXI4Transmitter
@@ -190,13 +190,17 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
 
   val threadOutput = PoseidonThread(g, preRoundConstStage.output)
 
-
   val demuxInst = LoopbackDeMux(g)
   demuxInst.io.input << threadOutput.toStream
   val loopback = demuxInst.io.output0.s2mPipe().m2sPipe()
   io.output << demuxInst.io.output1.stage() //add a stage of register
 
-  val fifoIPConfig = FifoIPConfig(byteWidth = 193, depth = 256, isSim = g.isSim, name="axis_data_fifo_0")
+  val fifoIPConfig = FifoIPConfig(
+    byteWidth = 193,
+    depth = 256,
+    isSim = g.isSim,
+    name = "axis_data_fifo_0"
+  )
   loopbackBuffer << BundleFifo(loopback, fifoIPConfig)
 }
 
@@ -239,7 +243,7 @@ object PoseidonTopLevelVerilog {
       roundf = 8,
       dataWidth = 255,
       idWidth = 8,
-      isSim = false,
+      isSim = true,
       loopNum = 1,
       constantMemType = true,
       transmitterQueue = 8,

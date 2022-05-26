@@ -45,7 +45,7 @@ class MDSMatrixAdders(g: PoseidonGenerics) extends Component {
   )
 
   val adderTree =
-    AdderTree(modAdderConfig, adderIPConfig1, g.sizeMax) 
+    AdderTree(modAdderConfig, adderIPConfig1, g.sizeMax)
 
   val partialRound = new Area {
     val input = io.input.takeWhen(!io.input.isFull)

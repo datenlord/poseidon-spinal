@@ -4,7 +4,7 @@ import spinal.lib._
 import scala.io.Source
 
 object ReadConstantsFromFile {
-  def matrix(row: Int, column: Int, fileName: String, radix: Int = 16) = {
+  def matrix(row: Int, column: Int, fileName: String, radix: Int) = {
     val file = Source.fromFile(fileName)
     val data = file
       .getLines()
@@ -22,7 +22,7 @@ object ReadConstantsFromFile {
     UIntMatrix
   }
 
-  def vector(fileName: String, radix: Int = 16): Array[UInt] = {
+  def vector(fileName: String, radix: Int): Array[UInt] = {
     val stringVec = Source.fromFile(fileName).getLines().filter(!_.equals(""))
     val UIntVec = stringVec.map(BigInt(_, radix)).map(U(_)).toArray
     UIntVec
@@ -50,20 +50,20 @@ case class MatrixConstantMem(g: MatMemConfig) extends Component {
     val data = Vec((out UInt (g.dataWidth bits)), g.column)
     val addr = in UInt (log2Up(g.row) bits)
   }
-  
-  val mdsMatrix = ReadConstantsFromFile.matrix(g.row, g.column, g.filePath)
+
+  val mdsMatrix = ReadConstantsFromFile.matrix(g.row, g.column, g.filePath, 16)
   val matTranspose = for (i <- 0 until g.column) yield mdsMatrix.map(_(i))
   val mdsMem = matTranspose.map(Mem(UInt(g.dataWidth bits), _))
 
   // TODO: cut high fan out
   val tempAddrVec = Vec(UInt(log2Up(g.row) bits), g.column)
-  tempAddrVec.foreach( _ := RegNext(io.addr))
+  tempAddrVec.foreach(_ := RegNext(io.addr))
   if (g.memType) {
-    for(i <- 0 until g.column){
+    for (i <- 0 until g.column) {
       io.data(i) := mdsMem(i).readAsync(tempAddrVec(i))
     }
   } else {
-    for(i <- 0 until g.column){
+    for (i <- 0 until g.column) {
       io.data(i) := mdsMem(i).readSync(tempAddrVec(i))
     }
   }
@@ -243,7 +243,7 @@ case class PartialRoundConstantMem(g: PoseidonGenerics) extends Component {
   val filePath =
     "./poseidon_constants/compressed_round_constants_ff/partial_round_constants_ff_%d.txt"
   val initialContent = PoseidonParam.sizeRange.map(size =>
-    ReadConstantsFromFile.vector(filePath.format(size))
+    ReadConstantsFromFile.vector(filePath.format(size), 16)
   )
   val constantsMem = initialContent.map(Mem(UInt(g.dataWidth bits), _))
   val memOutputs = constantsMem.map(_.readAsync(io.partialRound.resized))
@@ -274,7 +274,8 @@ case class FullRoundConstantMem(size: Int, g: PoseidonGenerics)
   val constantsMat = ReadConstantsFromFile.matrix(
     PoseidonParam.fullRound,
     size,
-    filePath.format(size)
+    filePath.format(size),
+    16
   )
   val matTranspose = for (i <- 0 until size) yield constantsMat.map(_(i))
   val memInst = matTranspose.map(Mem(UInt(g.dataWidth bits), _))
@@ -316,7 +317,6 @@ case class RoundConstantMem(g: PoseidonGenerics) extends Component {
   io.data := Mux(io.addr.isFull, fullConstant, partialConstant)
 }
 
-
 object MDSConstantMem {
   val latency = 5
   def apply(g: PoseidonGenerics, addr: ConstantAddrPort): Vec[UInt] = {
@@ -335,7 +335,7 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
 
   val outputWidth = g.dataWidth * g.sizeMax
 
-  val fullRound = new Area{
+  val fullRound = new Area {
     // full round Matrix constants
     val sizeDelayed1 = Delay(io.addr.stateSize, 2)
     val sizeSelect1 = PoseidonParam.sizeRange.map(_ === sizeDelayed1)
@@ -346,10 +346,10 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
       MatMemConfig(size, size, g.dataWidth, mdsPath.format(size))
     )
     val mdsOutputs = mdsConfigs.map(
-      MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
+      MatrixConstantMem(_, io.addr.stateIndex.resized).asBits
+        .resize(outputWidth)
     )
     val mdsOutput = RegNext(MuxOH(sizeSelect1, mdsOutputs))
-
 
     // pre sparse matrix
     val sizeDelayed2 = Delay(io.addr.stateSize, 2)
@@ -361,7 +361,8 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
       MatMemConfig(size, size, g.dataWidth, preSparsePath.format(size))
     )
     val preSparseOutputs = preSparseConfigs.map(
-      MatrixConstantMem(_, io.addr.stateIndex.resized).asBits.resize(outputWidth)
+      MatrixConstantMem(_, io.addr.stateIndex.resized).asBits
+        .resize(outputWidth)
     )
     val preSparseOutput = RegNext(MuxOH(sizeSelect2, preSparseOutputs))
 
@@ -376,11 +377,11 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
 
   }
 
-  val partialRound = new Area{
-      // sparse mds matrix
-    val sparseMatPath = "./poseidon_constants/sparse_matrix_ff/sparse_matrix_ff_%d.txt"
+  val partialRound = new Area {
+    // sparse mds matrix
+    val sparseMatPath =
+      "./poseidon_constants/sparse_matrix_ff/sparse_matrix_ff_%d.txt"
     val sparseMatT3 = RegNext(
-
       MatrixConstantMem(
         MatMemConfig(
           PoseidonParam.partialRoundMap(3),
@@ -449,18 +450,21 @@ case class MDSConstantMem(g: PoseidonGenerics) extends Component {
       io.addr.partialRound.resized
     ).asBits
 
-
     val indexDelayed1 = Delay(io.addr.stateIndex, 2)
     val indexDelayed2 = Delay(io.addr.stateIndex, 2)
-    val sparseMatT9  = RegNext(Mux(indexDelayed1 === 0, sparseRowT9, sparseColT9))
-    val sparseMatT12 = RegNext(Mux(indexDelayed2 === 0, sparseRowT12, sparseColT12))
+    val sparseMatT9 = RegNext(
+      Mux(indexDelayed1 === 0, sparseRowT9, sparseColT9)
+    )
+    val sparseMatT12 = RegNext(
+      Mux(indexDelayed2 === 0, sparseRowT12, sparseColT12)
+    )
     val sparseOutputs = Vec(
       sparseMatT3.asBits.resize(outputWidth),
       sparseMatT5.asBits.resize(outputWidth),
       sparseMatT9.resize(outputWidth),
       sparseMatT12
     )
-    
+
     val sizeDelayed = Delay(io.addr.stateSize, 3)
     val sizeSelect = PoseidonParam.sizeRange.map(_ === sizeDelayed)
     val output = RegNext(MuxOH(sizeSelect, sparseOutputs))

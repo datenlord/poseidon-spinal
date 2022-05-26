@@ -85,7 +85,7 @@ case class MDSMatrixMultiplier( // 49 stages
   // TODO: cut the critical path
   // modular multipliers: 47 stages
   val mulInputsTemp = mulInputs.map(_.stage())
-  val mulOutputs = mulInputsTemp.map( MontgomeryMultFlow(mulConfig, ipConfig, _) )
+  val mulOutputs = mulInputsTemp.map(MontgomeryMultFlow(mulConfig, ipConfig, _))
 
   val mulContext = MDSMulContext(g)
   mulContext.assignSomeByName(inputDelayed.payload)
@@ -108,11 +108,11 @@ case class MDSMatrixMultiplier( // 49 stages
         mulContextDelayed.stateElements(i - 1)
       )
 
-  
   val validDelayed = Delay(
     mulOutputs.map(_._1.valid).asBits().andR,
     adderOutputs(0)._2,
-    init=False)
+    init = False
+  )
   val mulOutput0Delayed = Delay(mulOutputs(0)._1.res, adderOutputs(0)._2)
   val addContext = MDSAddContext(g)
   addContext.assignSomeByName(mulContextDelayed)
@@ -149,8 +149,6 @@ object MDSMatrixMultiplierVerilog {
     val mulIPConfig = MulIPConfig(
       inputWidth = 34,
       outputWidth = 68,
-      isCE = false,
-      isSCLR = false,
       pipeStages = 6,
       moduleName = "mult_gen_0"
     )
