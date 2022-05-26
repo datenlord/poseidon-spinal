@@ -2,28 +2,36 @@ package poseidon
 import spinal.core._
 import spinal.lib._
 
-case class FifoIPConfig(byteWidth:Int, depth:Int, isSim:Boolean, name:String){
+case class FifoIPConfig(
+    byteWidth: Int,
+    depth: Int,
+    isSim: Boolean,
+    name: String
+) {
   val width = byteWidth * 8
 }
 
-object AXISDataFifoIP{
-  def apply(g:FifoIPConfig, input:Stream[Bits]):Stream[Bits]={
+object AXISDataFifoIP {
+  def apply(g: FifoIPConfig, input: Stream[Bits]): Stream[Bits] = {
     val fifoInst = AXISDataFifoIP(g).setDefinitionName(g.name)
     fifoInst.io.input << input
     fifoInst.io.output
   }
 }
 
-case class AXISDataFifoIP( g:FifoIPConfig ) extends BlackBox{
-  val io = new Bundle{
-    val input = slave Stream(Bits(g.width bits))
-    val output = master Stream(Bits(g.width bits))
-    val clk = in Bool()
-    val resetn = in Bool()
+case class AXISDataFifoIP(g: FifoIPConfig) extends BlackBox {
+  val io = new Bundle {
+    val input = slave Stream (Bits(g.width bits))
+    val output = master Stream (Bits(g.width bits))
+    val clk = in Bool ()
+    val resetn = in Bool ()
   }
 
-  
-  mapCurrentClockDomain(clock = io.clk, reset = io.resetn, resetActiveLevel= LOW)
+  mapCurrentClockDomain(
+    clock = io.clk,
+    reset = io.resetn,
+    resetActiveLevel = LOW
+  )
 
   // Remove io_ prefix
   noIoPrefix()
@@ -46,43 +54,53 @@ case class AXISDataFifoIP( g:FifoIPConfig ) extends BlackBox{
   addPrePopTask(() => renameIO())
 }
 
-
-object BundleFifo{
-  def apply[T<:Bundle](input:Stream[T], ipConfig:FifoIPConfig):Stream[T] = {
+object BundleFifo {
+  def apply[T <: Bundle](
+      input: Stream[T],
+      ipConfig: FifoIPConfig
+  ): Stream[T] = {
     val fifoInst = BundleFifo(cloneOf(input.payload), ipConfig)
     fifoInst.io.push << input
     fifoInst.io.pop
   }
 }
 
-case class BundleFifo[T <: Bundle](dataType:HardType[T], ip:FifoIPConfig) extends Component{
-  val io = new Bundle{
-    val push = slave Stream(dataType())
-    val pop = master Stream(dataType())
+case class BundleFifo[T <: Bundle](dataType: HardType[T], ip: FifoIPConfig)
+    extends Component {
+  val io = new Bundle {
+    val push = slave Stream (dataType())
+    val pop = master Stream (dataType())
   }
   val inputWidth = dataType.getBitsWidth
   val fifoWidth = ip.width
-  if(ip.isSim){
+  println(fifoWidth)
+  println(inputWidth)
+
+  if (ip.isSim) {
     io.pop << io.push.queue(ip.depth)
-  } else{
-    val slicesCount = inputWidth / fifoWidth + (if(inputWidth % fifoWidth==0) 0 else 1)
-    val slicesVec = for(i <- 0 until slicesCount)
-      yield io.push.payload.asBits((inputWidth-1 min (i+1)*fifoWidth) downto i*fifoWidth).resize(fifoWidth)
+  } else {
+    val slicesCount =
+      inputWidth / fifoWidth + (if (inputWidth % fifoWidth == 0) 0 else 1)
+    val slicesVec =
+      for (i <- 0 until slicesCount)
+        yield io.push.payload
+          .asBits((inputWidth - 1 min (i + 1) * fifoWidth) downto i * fifoWidth)
+          .resize(fifoWidth)
 
     val inputForked = StreamFork(io.push.toEvent(), slicesCount)
     val fifoInputs = Vec(Stream(Bits(fifoWidth bits)), slicesCount)
-    for(i <- 0 until slicesCount){
-        fifoInputs(i).arbitrationFrom(inputForked(i))
-        fifoInputs(i).payload := slicesVec(i)
+    for (i <- 0 until slicesCount) {
+      fifoInputs(i).arbitrationFrom(inputForked(i))
+      fifoInputs(i).payload := slicesVec(i)
     }
 
-    val fifoOutputs = fifoInputs.map(AXISDataFifoIP(ip,_))
+    val fifoOutputs = fifoInputs.map(AXISDataFifoIP(ip, _))
     io.pop.arbitrationFrom(StreamJoin(fifoOutputs))
     io.pop.payload.assignFromBits(fifoOutputs.map(_.payload).asBits().resized)
   }
 }
 
-object BundleFifoVerilog{
+object BundleFifoVerilog {
   def main(args: Array[String]): Unit = {
     val poseidonConfig = PoseidonGenerics(
       sizeMax = 12,
@@ -93,18 +111,21 @@ object BundleFifoVerilog{
       isSim = false
     )
 
-    val ipConfig = FifoIPConfig( byteWidth = 193, depth = 256, isSim = false, name="axis_data_fifo_0")
+    val ipConfig = FifoIPConfig(
+      byteWidth = 193,
+      depth = 256,
+      isSim = false,
+      name = "axis_data_fifo_0"
+    )
     val clockDomainConfig = ClockDomainConfig(
       resetKind = SYNC,
       resetActiveLevel = LOW
     )
 
     SpinalConfig(
-        mode = Verilog,
-        targetDirectory = "./src/main/verilog",
-        defaultConfigForClockDomains = clockDomainConfig
+      mode = Verilog,
+      targetDirectory = "./src/main/verilog",
+      defaultConfigForClockDomains = clockDomainConfig
     ).generate(BundleFifo(MDSContext(poseidonConfig), ipConfig))
   }
 }
-
-

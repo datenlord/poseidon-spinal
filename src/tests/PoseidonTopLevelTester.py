@@ -8,7 +8,7 @@ from poseidon_python import finite_field as ff
 from poseidon_python import poseidon_ff, basic
 
 
-CASES_NUM = 15
+CASES_NUM = 100
 
 
 class PoseidonTopLevelTester:
@@ -116,7 +116,7 @@ async def PoseidonTopLevelTest(dut):
     # rindex = [0,0,0,0]
     round_max = -1
     cycle = 0
-    #fifo_count = 0
+    # fifo_count = 0
     while True:
         await RisingEdge(dut.clk)
 
@@ -128,7 +128,7 @@ async def PoseidonTopLevelTest(dut):
 
         cycle = cycle + 1
         loop = dut.poseidonLoop_1
-        #thread = loop.poseidonThread_1
+        # thread = loop.poseidonThread_1
         # # if(loop.modAdderPipedFlow_1_io_output_valid.value):
         # #     print(hex(int(loop.modAdderPipedFlow_1_io_output_payload_res.value)))
 

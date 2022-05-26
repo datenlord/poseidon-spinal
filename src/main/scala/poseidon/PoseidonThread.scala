@@ -25,8 +25,6 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
   val mulIPConfig1 = MulIPConfig(
     inputWidth = 34,
     outputWidth = 68,
-    isCE = false,
-    isSCLR = false,
     pipeStages = 6,
     moduleName = "mult_gen_0"
   )
@@ -35,8 +33,6 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
   val mulIPConfig2 = MulIPConfig(
     inputWidth = 34,
     outputWidth = 68,
-    isCE = false,
-    isSCLR = false,
     pipeStages = 6,
     moduleName = "mult_gen_1"
   )
