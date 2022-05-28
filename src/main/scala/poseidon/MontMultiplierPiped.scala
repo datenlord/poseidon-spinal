@@ -313,7 +313,6 @@ case class MontMultiplierPipedSim2(g: MontMultiplierConfig) extends Component {
   io.output << resCombination.output.stage()
 }
 
-
 object MontMultiplierPipedVerilog {
   def main(args: Array[String]): Unit = {
 
