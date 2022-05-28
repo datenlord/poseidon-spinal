@@ -159,19 +159,6 @@ case class PoseidonLoop(g: PoseidonGenerics) extends Component {
   //serialize the parallel data from loopInput or loopback
   val serializerOutput = PoseidonSerializer(g, dataMuxed) // 1 stage
 
-  //add pre round constants
-  // val preRoundConstStage = new Area{ // 2 stages
-  //   val input = serializerOutput.toFlow
-  //   val preRoundConst = PreRoundConstantMem(g, input.stateSize, input.stateIndex)
-  //   val adderInput = input.translateWith(operands(input.stateElement, preRoundConst))
-  //   val adderRes = ModAdderPipedFlow(g.dataWidth, adderInput)
-  //   val addContextDelayed = Delay(input.payload, ModAdderPipedFlow.latency)
-  //   val output = adderRes.translateWith(addContextDelayed)
-  //   when(addContextDelayed.fullRound===0){
-  //     output.stateElement := adderRes.res
-  //   }
-  // }
-
   val preRoundConstStage = new Area { // 2 stages
     val input = serializerOutput.toFlow
     val preRoundConst =
