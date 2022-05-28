@@ -203,34 +203,6 @@ case class ShiftRegister(dataWidth: Int, length: Int) extends Component {
   }
 }
 
-// case class ShiftMatrix(dataWidth:Int, inputNum:Int, outputNum:Int) extends Component{
-//   val io = new Bundle{
-//     val ctrlVec = Vec(in Bool(), inputNum)
-//     val inputVec = Vec(in UInt(dataWidth bits), inputNum)
-//     val outputVec = Vec(out UInt(dataWidth bits), outputNum)
-//   }
-//   val bufferVec = Array.fill(inputNum)(ShiftRegister(dataWidth,outputNum))
-//   for(i <- 0 until inputNum){
-//     bufferVec(i).io.ena := io.ctrlVec(i)
-//     bufferVec(i).io.init := !io.ctrlVec(i)
-//     bufferVec(i).io.serialInput := io.inputVec(i)
-//     if(i == inputNum-1){
-//       bufferVec(i).io.parallelInput.assignFromBits(B(0,dataWidth*outputNum bits))
-//     } else{
-//       bufferVec(i).io.parallelInput.assignFromBits(bufferVec(i+1).io.parallelOutput.asBits)
-//     }
-//   }
-//   io.outputVec.assignFromBits(bufferVec(0).io.parallelOutput.asBits)
-// }
-
-// object ShiftMatrix{
-//   def apply(g:PoseidonGenerics, input:Flow[MDSContext]):Flow[MDSContext]={
-//     val matInst = ShiftMatrix(g)
-//     matInst.io.input << input
-//     matInst.io.output
-//   }
-// }
-
 case class ShiftMatrix(g: PoseidonGenerics) extends Component {
   val io = new Bundle {
     val input = slave Flow (MDSContext(g))
