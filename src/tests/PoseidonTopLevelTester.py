@@ -28,7 +28,7 @@ class PoseidonTopLevelTester:
         """get random input values"""
         size_range = [3, 5, 9, 12]
         # state_size  = size_range[random.randint(0,3)]
-        state_size = 9  # size_range[int(cases_count / 25)]
+        state_size = 3  # size_range[int(cases_count / 25)]
         state_elements = []
         for i in range(state_size):
             state_elements.append(ff.PrimeField(random.randint(0, basic.P - 1)))
@@ -116,6 +116,8 @@ async def PoseidonTopLevelTest(dut):
     trans_log = open("trans_log.txt","w")
     loop2 = dut.poseidonLoop_2
     loop3 = dut.poseidonLoop_3
+    id2 = 1
+    id3 = 1
     while True:
         await RisingEdge(dut.clk)
         # Loop Input Signals
@@ -139,10 +141,12 @@ async def PoseidonTopLevelTest(dut):
             rIndex = loop2.streamArbiter_6_io_output_payload_roundIndex.value
             id = loop2.streamArbiter_6_io_output_payload_stateId.value
             loop2_file.write(f"id{int(id)} state_index:{int(sIndex)} round_index:{int(rIndex)}\n")
-            print("loop 2 arbiter output: ")
-            print(f"id:{int(id)}")
-            print(f"state_index:{int(sIndex)}")
-            print(f"round_index:{int(rIndex)}"+"\n")
+            if(id != id2):
+                id2 = id
+                print("loop 2 arbiter output: ")
+                print(f"id:{int(id)}")
+                print(f"state_index:{int(sIndex)}")
+                print(f"round_index:{int(rIndex)}"+"\n")
         
         valid = loop3.streamArbiter_6_io_output_valid
         ready = loop3.streamArbiter_6_io_output_ready
@@ -151,10 +155,12 @@ async def PoseidonTopLevelTest(dut):
             rIndex = loop3.streamArbiter_6_io_output_payload_roundIndex.value
             id = loop3.streamArbiter_6_io_output_payload_stateId.value
             loop3_file.write(f"id{int(id)} state_index:{int(sIndex)} round_index:{int(rIndex)}\n")
-            print("loop 3 arbiter output: ")
-            print(f"id:{int(id)}")
-            print(f"state_index:{int(sIndex)}")
-            print(f"round_index:{int(rIndex)}"+"\n")
+            if(id != id3):
+                id3 = id
+                print("loop 3 arbiter output: ")
+                print(f"id:{int(id)}")
+                print(f"state_index:{int(sIndex)}")
+                print(f"round_index:{int(rIndex)}"+"\n")
         
         # transmitter Input
         valid = dut.transmitterInput_valid

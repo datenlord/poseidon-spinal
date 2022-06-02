@@ -14,85 +14,13 @@ case class MontMultConfig(
     isSim: Boolean
 )
 
-object MontgomeryMultStream {
-  def apply(
-      g: MontMultConfig,
-      ipConfig: MulIPConfig,
-      input: Stream[operands]
-  ): Stream[results] = {
-    val multInst = MontgomeryMultStream(g, ipConfig)
-    multInst.io.input << input
-    multInst.io.output
-  }
-}
-
-case class MontgomeryMultStream(g: MontMultConfig, ipConfig: MulIPConfig)
-    extends Component {
-
-  val io = new Bundle {
-    val input = slave Stream (operands(g.dataWidth))
-    val output = master Stream (results(g.dataWidth))
-  }
-
-  val mulInput0 = io.input.translateWith {
-    operands(g.dataWidth, io.input.op1, io.input.op2)
-  }
-
-  val mulRes0 = MultiplierStream(g.dataWidth, g.isSim, ipConfig, mulInput0)
-  val mulRes0Forked = StreamFork(mulRes0, 2, true)
-
-  val mulRes0Queued = mulRes0Forked(1).queue(35)
-
-  val mulInput1 = mulRes0Forked(0).translateWith {
-    val payload = operands(g.rWidth)
-    payload.op1 := mulRes0Forked(0).res(g.rWidth - 1 downto 0)
-    payload.op2 := U(g.modInverse, g.rWidth bits)
-    payload
-  }
-  val mulRes1 = MultiplierStream(g.rWidth, g.isSim, ipConfig, mulInput1)
-
-  val mulInput2 = mulRes1.translateWith {
-    val payload = operands(g.rWidth)
-    payload.op1 := mulRes1.res(g.rWidth - 1 downto 0)
-    payload.op2 := U(g.modulus, g.rWidth bits)
-    payload
-  }
-  val mulRes2 = MultiplierStream(g.rWidth, g.isSim, ipConfig, mulInput2)
-
-  val adderOutput0 = StreamJoin
-    .arg(mulRes2, mulRes0Queued)
-    .translateWith {
-      val payload = results(g.dataWidth + 1)
-      payload.res := (mulRes2.res + mulRes0Queued.res)(
-        g.dataWidth + g.rWidth downto g.rWidth
-      )
-      payload
-    }
-    .stage()
-
-  io.output << adderOutput0
-    .translateWith {
-      val payload = results(g.dataWidth)
-      val adderRes0 = adderOutput0.res
-      val adderRes1 = adderOutput0
-        .res(g.dataWidth - 1 downto 0) +^ U(g.compensation, g.dataWidth bits)
-      payload.res := Mux(
-        adderRes1.msb | adderRes0.msb,
-        adderRes1,
-        adderRes0
-      ).resized
-      payload
-    }
-    .stage()
-}
-
 object MontgomeryMultFlow {
 
   def latency(mulConfig:MontMultConfig, ipConfig:MulIPConfig):Int = {
-    val mulLatency0 = MultiplierFlow.latency(mulConfig.dataWidth, ipConfig)
-    val mulLatency1 = MultiplierFlow.latency(mulConfig.rWidth, ipConfig)
-    val mulLatency2 = MultiplierFlow.latency(mulConfig.rWidth, ipConfig)
-    mulLatency0 + mulLatency1 + mulLatency2 + 2
+    val mulLatency0 = KaratsubaBigMultiplier.latency(mulConfig.dataWidth, ipConfig)
+    val mulLatency1 = KaratsubaBigMultiplier.latency(mulConfig.rWidth, ipConfig)
+    val mulLatency2 = KaratsubaBigMultiplier.latency(mulConfig.rWidth, ipConfig)
+    mulLatency0 + mulLatency1 + mulLatency2 + 4 + 2 + 1
   }
 
   def apply(
@@ -114,8 +42,8 @@ case class MontgomeryMultFlow(g: MontMultConfig, ipConfig: MulIPConfig)
     val output = master Flow (results(g.dataWidth))
   }
 
-  val (mulRes0, latency0) =
-    MultiplierFlow(g.dataWidth, g.isSim, ipConfig, io.input)
+  val mulRes0 = KaratsubaBigMultiplier(g.dataWidth, ipConfig, g.isSim, io.input)
+  val mulLatency0 = KaratsubaBigMultiplier.latency(g.dataWidth, ipConfig)
 
   val mulInput1 = mulRes0.translateWith {
     val payload = operands(g.rWidth)
@@ -123,8 +51,8 @@ case class MontgomeryMultFlow(g: MontMultConfig, ipConfig: MulIPConfig)
     payload.op2 := U(g.modInverse, g.rWidth bits)
     payload
   }
-  val (mulRes1, latency1) =
-    MultiplierFlow(g.rWidth, g.isSim, ipConfig, mulInput1)
+  val mulRes1 = KaratsubaBigMultiplier(g.rWidth, ipConfig, g.isSim, mulInput1)
+  val mulLatency1 = KaratsubaBigMultiplier.latency(g.rWidth, ipConfig)
 
   val mulInput2 = mulRes1.translateWith {
     val payload = operands(g.rWidth)
@@ -132,71 +60,56 @@ case class MontgomeryMultFlow(g: MontMultConfig, ipConfig: MulIPConfig)
     payload.op2 := U(g.modulus, g.rWidth bits)
     payload
   }
-  val (mulRes2, latency2) =
-    MultiplierFlow(g.rWidth, g.isSim, ipConfig, mulInput2)
+  val mulRes2 = KaratsubaBigMultiplier(g.rWidth, ipConfig, g.isSim, mulInput2)
+  val mulLatency2 = KaratsubaBigMultiplier.latency(g.rWidth, ipConfig)
 
-  val mulRes0Delayed = Delay(mulRes0.res, latency1 + latency2)
+  val mulRes0Delayed = Delay(mulRes0.res, mulLatency1+mulLatency2)
 
-  val adderOutput0 = mulRes2
-    .translateWith {
-      val payload = results(g.dataWidth + 1)
-      payload.res := (mulRes2.res + mulRes0Delayed)(
-        g.dataWidth + g.rWidth downto g.rWidth
-      )
-      payload
+  //
+  def addDivided2(op1:UInt, op2:UInt, carry:Bool, divisor:Int):(UInt,Int)={
+    val width = if(op1.getWidth > op2.getWidth) op1.getWidth else op2.getWidth
+    val halfWidth = (width + 1)/2
+    val op1Divided = op1.resize(width).subdivideIn(2 slices, strict=false)
+    val op2Divided = op2.resize(width).subdivideIn(2 slices, strict=false)
+
+    val (addLow, latency1) = if(divisor==2){
+      (RegNext(op1Divided(0) +^ op2Divided(0) + carry.asUInt), 1)
+    } else{
+      addDivided2(op1Divided(0), op2Divided(0), carry, divisor/2)
     }
-    .stage()
 
-  io.output << adderOutput0
-    .translateWith {
-      val payload = results(g.dataWidth)
-      val adderRes0 = adderOutput0.res
-      val adderRes1 = adderOutput0
-        .res(g.dataWidth - 1 downto 0) +^ U(g.compensation, g.dataWidth bits)
-      payload.res := Mux(
-        adderRes1.msb | adderRes0.msb,
-        adderRes1,
-        adderRes0
-      ).resized
-      payload
+    val op1Delay = Delay(op1Divided(1), latency1)
+    val op2Delay = Delay(op2Divided(1), latency1)
+    val (addHigh, latency2) = if(divisor==2){
+      (RegNext(op1Delay +^ op2Delay + addLow.msb.asUInt), 1)
+    } else{
+      addDivided2(op1Delay, op2Delay, addLow.msb, divisor/2)
     }
-    .stage()
 
-  val totalLatency = latency0 + latency1 + latency2 + 2
-}
-
-object MontgomeryMultStreamVerilog {
-  def main(args: Array[String]): Unit = {
-    val modulus = BigInt(
-      "73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001",
-      16
-    )
-    val modInverse = BigInt(
-      "3d443ab0d7bf2839181b2c170004ec0653ba5bfffffe5bfdfffffffeffffffff",
-      16
-    )
-    val compensation = BigInt(
-      "c1258acd66282b7ccc627f7f65e27faac425bfd0001a40100000000ffffffff",
-      16
-    )
-    val montConfig =
-      MontMultConfig(255, 256, modulus, modInverse, compensation, true)
-
-    val ipConfig = MulIPConfig(
-      inputWidth = 34,
-      outputWidth = 68,
-      isCE = true,
-      isSCLR = true,
-      pipeStages = 6,
-      moduleName = "mult_gen_0"
-    )
-
-    SpinalConfig(
-      mode = Verilog,
-      targetDirectory = "./src/main/verilog"
-    ).generate(MontgomeryMultStream(montConfig, ipConfig))
+    val addLowDelay = Delay(addLow.resize(halfWidth), latency2)
+    (addHigh @@ addLowDelay, latency1+latency2)
   }
+  //
+  val (addRes0, addLatency0) = addDivided2(mulRes2.res, mulRes0Delayed, False, 4)
+
+  val addOp1 = (addRes0>>g.rWidth).resize(g.dataWidth)
+  val addOp2 = (U(g.compensation, g.dataWidth bits))
+  val (addRes1, addLatency1) = addDivided2(addOp1, addOp2, False, 2)
+
+  val addRes0Delayed = Delay((addRes0>>g.rWidth).resize(g.dataWidth+1), addLatency1)
+  val validDelayed = Delay(mulRes2.valid, addLatency0+addLatency1, init=False)
+
+  println(s"add Latency 0: $addLatency0")
+  println(s"add Latency 1: $addLatency1")
+
+  val tempOutput = Flow(results(g.dataWidth))
+  tempOutput.valid := validDelayed
+  tempOutput.res := Mux(addRes0Delayed.msb||addRes1.msb, addRes1, addRes0Delayed).resized
+  io.output << tempOutput.stage()
+
+  val latency= mulLatency0 + mulLatency1 + mulLatency2 + addLatency0 + addLatency1 + 1
 }
+
 
 object MontgomeryMultFlowVerilog {
   def main(args: Array[String]): Unit = {
@@ -217,3 +130,5 @@ object MontgomeryMultFlowVerilog {
     print(MontgomeryMultFlow.latency(montConfig, XilinxIPConfig.mul0))
   }
 }
+
+

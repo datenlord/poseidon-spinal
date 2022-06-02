@@ -6,7 +6,7 @@ from cocotb.result import TestSuccess
 from cocotb.triggers import RisingEdge
 from queue import Queue
 
-CASES_NUM = 3000  # the number of test cases
+CASES_NUM = 4000  # the number of test cases
 
 
 class MultiplierTester:

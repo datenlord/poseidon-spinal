@@ -42,7 +42,7 @@ class PoseidonThread(g: PoseidonGenerics) extends Component {
     val constantAddr = RoundConstantMemAddr(g)
     constantAddr.assignSomeByName(input.payload)
     val constant = RoundConstant(g, constantAddr)
-    val inputDelayed = FlowDelay(input, RoundConstant.latency(g))
+    val inputDelayed = FlowDelay(input, RoundConstant.latency)
 
     val addInput = inputDelayed.translateWith{
       operands(g.dataWidth, inputDelayed.stateElement, constant)

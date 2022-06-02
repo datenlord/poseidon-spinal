@@ -23,43 +23,8 @@ object ReadMatrixFromFile {
 }
 
 
-
-object MDSMatrix {
-  def apply(t: Int, dataWidth: Int, address: UInt): Vec[UInt] = {
-    val matrixInst = MDSMatrix(t, dataWidth)
-    matrixInst.io.addressPort := address
-    matrixInst.io.dataPorts
-  }
-}
-
-case class MDSMatrix(t: Int, dataWidth: Int) extends Component {
-
-  val io = new Bundle {
-    val dataPorts = Vec((out UInt (dataWidth bits)), t)
-    val addressPort = in UInt (log2Up(t) bits)
-  }
-
-  val filename =
-    "./poseidon_constants/mds_matrixs_ff/mds_matrix_ff_%d.txt"
-  val mdsMatrix = ReadMatrixFromFile(t, t, filename.format(t))
-  val matrixTranspose = for (i <- 0 until t) yield mdsMatrix.map(_(i))
-  val mdsRoms =
-    for (i <- 0 until t)
-      yield Mem(
-        UInt(dataWidth bits),
-        initialContent = matrixTranspose(i)
-      )
-  for (i <- 0 until t) {
-    io.dataPorts(i) := mdsRoms(i).readAsync(io.addressPort)
-  }
-
-}
-
 object RoundConstantMem {
-  def latency(g:PoseidonGenerics):Int = {
-    1 + (if(g.constantMemType) 1 else 0)
-  }
-
+  val latency = 2
   def apply(size: Int, g: PoseidonGenerics, stateIndex: UInt, rIndex: UInt): UInt = {
     val memInst = RoundConstantMem(size, g)
     memInst.io.stateIndex := stateIndex
@@ -68,8 +33,7 @@ object RoundConstantMem {
   }
 }
 
-case class RoundConstantMem(size: Int, g: PoseidonGenerics)
-    extends Component {
+case class RoundConstantMem(size: Int, g: PoseidonGenerics)extends Component {
 
   val io = new Bundle {
     val stateIndex = in UInt (log2Up(g.sizeMax) bits)
@@ -86,15 +50,12 @@ case class RoundConstantMem(size: Int, g: PoseidonGenerics)
   )
   val matTranspose = for (i <- 0 until size) yield constantsMat.map(_(i))
   val memInst = matTranspose.map(Mem(UInt(g.dataWidth bits), _))
-  val memOutput = if(g.constantMemType){
-    memInst.map( _.readSync(io.roundIndex.resized) )
-  } else{
-    memInst.map( _.readAsync(io.roundIndex.resized) )
-  }
+  val memOutput = memInst.map( _.readSync(io.roundIndex.resized) )
 
-  val stateIndex = if(g.constantMemType) RegNext(io.stateIndex) else io.stateIndex
-  io.constant := RegNext(memOutput(stateIndex.resized))
-  val latency = 1 + (if(g.constantMemType) 1 else 0)
+
+  val indexMusk = (0 until size).map(io.stateIndex === _).map(RegNext(_))
+  io.constant := RegNext(MuxOH(indexMusk, memOutput))
+  val latency = 2
 }
 
 
@@ -106,9 +67,7 @@ case class RoundConstantMemAddr(g:PoseidonGenerics) extends Bundle{
 
 object RoundConstant{
 
-  def latency(g:PoseidonGenerics):Int = {
-    RoundConstantMem.latency(g) + 1
-  }
+  val latency = RoundConstantMem.latency + 1
 
   def apply(g:PoseidonGenerics, addr:RoundConstantMemAddr):UInt = {
     val memInst = RoundConstant(g)
@@ -122,21 +81,18 @@ case class RoundConstant(g:PoseidonGenerics) extends Component{
     val data = out UInt(g.dataWidth  bits)
   }
 
-  val constantVec = PoseidonParam.sizeRange.map(
+  val constants = PoseidonParam.sizeRange.map(
     RoundConstantMem(_, g, io.addr.stateIndex, io.addr.roundIndex)
   )
-  val sizeDelayed = Delay(io.addr.stateSize, RoundConstantMem.latency(g))
-  val sizeSelect = PoseidonParam.sizeRange.map(_ === sizeDelayed)
-  io.data := RegNext( MuxOH(sizeSelect, constantVec) )
-  val latency = RoundConstantMem.latency(g) + 1
+
+  val sizeMusk = PoseidonParam.sizeRange.map(_ === io.addr.stateSize)
+  val muskDelayed = sizeMusk.map(Delay(_, RoundConstantMem.latency))
+
+  val constantMusked = (constants lazyZip muskDelayed).map(_ & UInt(g.dataWidth bits).setAllTo(_))
+  io.data := RegNext( constantMusked.reduce(_|_) )
+  val latency = RoundConstantMem.latency + 1
 }
 
-
-object MDSMatrixVerilog {
-  def main(args: Array[String]): Unit = {
-    SpinalVerilog(MDSMatrix(t = 3, dataWidth = 256))
-  }
-}
 
 
 
@@ -181,7 +137,7 @@ case class MDSMatrixRowMem(g:PoseidonGenerics, peTag:Int, rowNum:Int) extends Co
       val matrixRowMem = Mem(
         UInt(g.dataWidth bits), mdsMatrices(i)(rowIndex)
       ).setName("matrixRowMem_size_%d_row_%d".format(sizeRange(i),rowIndex))
-      matrixRows(i) := matrixRowMem.readSync(tempColIndex.resized)
+      matrixRows(i) := RegNext(matrixRowMem.readAsync(tempColIndex.resized)) ///
     }
   }
 
@@ -252,7 +208,7 @@ object PEConstantMemVerilog{
       loopNum = 3,
       dataWidth = 255,
       idWidth = 8,
-      isSim = false,
+      isSim = true,
       constantMemType = false
     )
 

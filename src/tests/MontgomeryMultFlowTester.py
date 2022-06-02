@@ -5,9 +5,8 @@ from cocotb.result import TestSuccess
 from cocotb.triggers import RisingEdge
 from queue import Queue
 from poseidon_python import finite_field as ff
-from cocotb_test import simulator
 
-CASES_NUM = 1000  # the number of test cases
+CASES_NUM = 8000  # the number of test cases
 
 
 class MontgomeryMultFlowTester:
@@ -74,7 +73,7 @@ class MontgomeryMultFlowTester:
         raise TestSuccess(" pass {} test cases".format(CASES_NUM))
 
 
-@cocotb.test(timeout_time=300000, timeout_unit="ns")
+@cocotb.test(timeout_time=3000000, timeout_unit="ns")
 async def MontMultiplierTest(dut):
     await cocotb.start(Clock(dut.clk, 10, "ns").start())
 
@@ -91,14 +90,4 @@ async def MontMultiplierTest(dut):
         await RisingEdge(dut.clk)
 
 
-# pytest
-def test_MontMultiplierPiped():
-    simulator.run(
-        verilog_sources=[
-            "../main/verilog/MontMultiplierPiped.v",
-            "../main/verilog/MontMultiplierBasics.v",
-        ],
-        toplevel="MontMultiplierPiped",
-        module="MontMultiplierPipedTester",
-        python_search="./src/reference_model/",
-    )
+

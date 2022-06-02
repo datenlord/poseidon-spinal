@@ -65,11 +65,11 @@ ifeq ($(DUT), MontgomeryMultStream)
 endif
 
 
-ifeq ($(DUT), MultiplierIPStream)
-	MODULE = MultiplierStreamTester
+ifeq ($(DUT), MultiplierIPFlow)
+	MODULE = MultiplierFlowTester
 endif
 
-ifeq ($(DUT), MultiplierIPFlow)
+ifeq ($(DUT), KaratsubaBigMultiplier)
 	MODULE = MultiplierFlowTester
 endif
 

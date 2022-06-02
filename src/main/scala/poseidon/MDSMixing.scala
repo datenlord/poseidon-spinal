@@ -267,23 +267,6 @@ object ProcessingEngineVerilog{
         isSim = true
     )
 
-    val mulIP = MulIPConfig(
-      inputWidth = 34,
-      outputWidth = 68,
-      isCE = false,
-      isSCLR = false,
-      pipeStages = 6,
-      moduleName = "mult_gen_0"
-    )
-
-    // set configuration parameters of Xilinx Adder IP implemented through LUT
-    val addIP = AdderIPConfig(
-      inputWidth = 255,
-      outputWidth = 256,
-      latency = 8,
-      moduleName = "c_addsub_0"
-    )
-
     // set configuration parameters of ModularAdderFlow implemented through Xilinx Adder IP
     val addConfig = ModAdderConfig(
       dataWidth = 255,
@@ -292,7 +275,7 @@ object ProcessingEngineVerilog{
       isSim = true
     )
 
-    val modArith = ModArithmetic(mulConfig, mulIP,addConfig, addIP)
+    val modArith = ModArithmetic(mulConfig, XilinxIPConfig.mul0, addConfig, XilinxIPConfig.adder0)
     SpinalConfig(
       mode = Verilog,
       targetDirectory = "./src/main/verilog/"

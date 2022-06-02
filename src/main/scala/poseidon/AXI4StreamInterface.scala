@@ -42,9 +42,11 @@ case class AXI4StreamReceiver(g: PoseidonGenerics) extends Component {
     payload.stateId := idCount.value
     payload
   }
+
   val sizeInput = inputForked(1).translateWith((indexCount.value + 1)).takeWhen(io.input.tlast)
 
-  val bufferOutput = bufferInput.queue(g.sizeMax + 1)
+  //val bufferOutput = bufferInput.queue(2 * g.sizeMax)
+  val bufferOutput = BundleFifo(bufferInput, XilinxIPConfig.fifo1, g.isSim)
   val sizeCounter = sizeInput.m2sPipe()
   val sizeHold = sizeCounter.forkSerial(bufferOutput.stateIndex===sizeCounter.payload-1)
 
@@ -82,7 +84,8 @@ case class AXI4StreamTransmitter(g: PoseidonGenerics) extends Component {
   val demuxSelect = io.input.stateId === idCount.value
   val inputDemuxed = StreamDemux(io.input, demuxSelect.asUInt, 2)
 
-  val bufferOutput = inputDemuxed(0).queue(g.transmitterQueue)
+  //val bufferOutput = inputDemuxed(0).queue(g.transmitterQueue)
+  val bufferOutput = BundleFifo(inputDemuxed(0), XilinxIPConfig.fifo2, g.isSim)
 
   val arbiterInput0 = inputDemuxed(1).translateWith{
     val payload = AXI4Stream(g.dataWidth)
